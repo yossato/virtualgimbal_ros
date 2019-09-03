@@ -2,7 +2,9 @@ cmake_minimum_required(VERSION 2.8.3)
 project(virtualgimbal_ros)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-# add_compile_options(-std=c++11)
+add_compile_options(-std=c++11)
+
+find_package(OpenCV 3 REQUIRED )
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -14,7 +16,9 @@ find_package(catkin REQUIRED COMPONENTS
   image_transport
   cv_bridge
 )
-
+set(ALL_LIBS
+        ${OpenCV_LIBS}
+)
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
@@ -150,7 +154,7 @@ add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catk
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}_node
-  ${catkin_LIBRARIES}
+  ${catkin_LIBRARIES}  ${OpenCV_LIBS}
 )
 
 #############

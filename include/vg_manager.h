@@ -5,6 +5,7 @@
 #include <cv.h>
 #include <cv_bridge/cv_bridge.h>
 #include <image_transport/image_transport.h>
+#include <opencv2/opencv.hpp>
 namespace virtualgimbal
 {
 class manager
