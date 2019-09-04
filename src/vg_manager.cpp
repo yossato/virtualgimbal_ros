@@ -6,8 +6,14 @@ namespace virtualgimbal
 
 manager::manager() : pnh_("~"), image_transport_(pnh_)
 {
-    camera_subscriber_ = image_transport_.subscribeCamera("image", 10, &manager::callback, this);
-    imu_subscriber_ = pnh_.subscribe("imu_data", 1000, &manager::imu_callback, this);
+    std::string image = "/image";
+    std::string imu_data = "/imu_data";
+    pnh_.param("image",image,image);
+    pnh_.param("imu_data",imu_data,imu_data);
+    ROS_INFO("image topic is %s",image.c_str());
+    ROS_INFO("imu_data topic is %s",imu_data.c_str());
+    camera_subscriber_ = image_transport_.subscribeCamera(image, 10, &manager::callback, this);
+    imu_subscriber_ = pnh_.subscribe(imu_data, 1000, &manager::imu_callback, this);
      pub_ = image_transport_.advertise("camera/image", 1);
 }
 
@@ -35,6 +41,7 @@ void manager::callback(const sensor_msgs::ImageConstPtr &image, const sensor_msg
 
 void manager::imu_callback(const sensor_msgs::Imu::ConstPtr &msg)
 {
+    ROS_INFO("IMU Called");
 }
 
 } // namespace virtualgimbal
