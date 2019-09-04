@@ -8,6 +8,7 @@ manager::manager() : pnh_("~"), image_transport_(pnh_)
 {
     camera_subscriber_ = image_transport_.subscribeCamera("image", 10, &manager::callback, this);
     imu_subscriber_ = pnh_.subscribe("imu_data", 1000, &manager::imu_callback, this);
+     pub_ = image_transport_.advertise("camera/image", 1);
 }
 
 void manager::callback(const sensor_msgs::ImageConstPtr &image, const sensor_msgs::CameraInfoConstPtr &camera_info)
@@ -26,6 +27,10 @@ void manager::callback(const sensor_msgs::ImageConstPtr &image, const sensor_msg
 
     cv::imshow("received image", umat_src);
     cv::waitKey(1);
+
+    //publish image
+    sensor_msgs::ImagePtr msg = cv_bridge::CvImage(image->header, "bgr8", umat_src.getMat(cv::ACCESS_READ)).toImageMsg();
+    pub_.publish(msg);
 }
 
 void manager::imu_callback(const sensor_msgs::Imu::ConstPtr &msg)

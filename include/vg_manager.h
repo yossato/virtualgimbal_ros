@@ -20,6 +20,7 @@ private:
     image_transport::ImageTransport image_transport_;
     image_transport::CameraSubscriber camera_subscriber_;
     ros::Subscriber imu_subscriber_;
+    image_transport::Publisher pub_ ;
 };
 
 } // namespace virtualgimbal
