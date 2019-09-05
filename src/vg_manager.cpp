@@ -4,7 +4,7 @@
 namespace virtualgimbal
 {
 
-manager::manager() : pnh_("~"), image_transport_(pnh_)
+manager::manager() : pnh_("~"), image_transport_(pnh_), q(1.0, 0, 0, 0)
 {
     std::string image = "/image";
     std::string imu_data = "/imu_data";
@@ -14,7 +14,7 @@ manager::manager() : pnh_("~"), image_transport_(pnh_)
     ROS_INFO("imu_data topic is %s",imu_data.c_str());
     camera_subscriber_ = image_transport_.subscribeCamera(image, 10, &manager::callback, this);
     imu_subscriber_ = pnh_.subscribe(imu_data, 1000, &manager::imu_callback, this);
-     pub_ = image_transport_.advertise("camera/image", 1);
+    pub_ = image_transport_.advertise("camera/image", 1);
 }
 
 void manager::callback(const sensor_msgs::ImageConstPtr &image, const sensor_msgs::CameraInfoConstPtr &camera_info)
@@ -39,9 +39,39 @@ void manager::callback(const sensor_msgs::ImageConstPtr &image, const sensor_msg
     pub_.publish(msg);
 }
 
+#define EPS_Q 1E-4
+
+    template <typename T_num>
+    Eigen::Quaternion<T_num> Vector2Quaternion(Eigen::Vector3d w)
+    {
+        double theta = w.norm(); //sqrt(w[0]*w[0]+w[1]*w[1]+w[2]*w[2]);//回転角度を計算、normと等しい
+        //0割を回避するためにマクローリン展開
+        if (theta > EPS_Q)
+        {
+            Eigen::Vector3d n = w.normalized(); //w * (1.0/theta);//単位ベクトルに変換
+            //            double sin_theta_2 = sin(theta*0.5);
+            //            return Eigen::Quaternion<T_num>(cos(theta*0.5),n[0]*sin_theta_2,n[1]*sin_theta_2,n[2]*sin_theta_2);
+            Eigen::VectorXd n_sin_theta_2 = n * sin(theta * 0.5);
+            return Eigen::Quaternion<T_num>(cos(theta * 0.5), n_sin_theta_2[0], n_sin_theta_2[1], n_sin_theta_2[2]);
+        }
+        else
+        {
+            return Eigen::Quaternion<T_num>(1.0, 0.5 * w[0], 0.5 * w[1], 0.5 * w[2]).normalized();
+        }
+    }
+
 void manager::imu_callback(const sensor_msgs::Imu::ConstPtr &msg)
 {
-    ROS_INFO("IMU Called");
+    Eigen::Vector3d w(msg->angular_velocity.x,msg->angular_velocity.y,msg->angular_velocity.z);
+    
+    if(imu_previous){   // Previous data is exist.
+        ros::Duration diff = (msg->header.stamp - imu_previous->header.stamp);
+        Eigen::Vector3d dq = w * diff.toSec();
+        q = q*Vector2Quaternion<double>(dq);
+        ROS_INFO("%f %f %f %f",q.w(),q.x(),q.y(),q.z());
+    }
+    imu_previous = msg;
+    
 }
 
 } // namespace virtualgimbal
