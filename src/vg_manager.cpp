@@ -4,7 +4,7 @@
 namespace virtualgimbal
 {
 
-manager::manager() : pnh_("~"), image_transport_(pnh_), q(1.0, 0, 0, 0)
+manager::manager() : pnh_("~"), image_transport_(pnh_), q(1.0, 0, 0, 0), q_filtered(1.0,0,0,0)
 {
     std::string image = "/image";
     std::string imu_data = "/imu_data";
@@ -41,6 +41,39 @@ void manager::callback(const sensor_msgs::ImageConstPtr &image, const sensor_msg
 
 #define EPS_Q 1E-4
 
+
+    template <typename T_num>
+    Eigen::Vector3d Quaternion2Vector(Eigen::Quaternion<T_num> q, Eigen::Vector3d prev){
+        double denom = sqrt(1-q.w()*q.w());
+        if(denom==0.0){//まったく回転しない時は０割になるので、場合分けする
+            return Eigen::Vector3d(0,0,0);//return zero vector
+        }
+        double theta_2 = atan2(denom,q.w());
+        double prev_theta_2 = prev.norm()/2;
+        double diff = theta_2 - prev_theta_2;
+        theta_2 -= 2.0*M_PI*(double)(static_cast<int>(diff/(2.0*M_PI)));//マイナスの符号に注意
+        //~ printf("Theta_2:%4.3f sc:%d\n",theta_2,static_cast<int>(diff/(2.0*M_PI)));
+        if(static_cast<int>(diff/(2.0*M_PI))!=0){
+            printf("\n###########Unwrapping %d\n",static_cast<int>(diff/(2.0*M_PI)));
+        }
+
+        return  Eigen::Vector3d(q.x(),q.y(),q.z())*2.0*theta_2/denom;
+    }
+    
+    /**
+     * @param 回転を表すクォータニオンをシングルローテーションをあらわすベクトルへ変換
+     **/
+    template <typename T_num>
+    Eigen::Vector3d Quaternion2Vector(Eigen::Quaternion<T_num> q)
+    {
+        double denom = sqrt(1 - q.w() * q.w());
+        if (fabs(denom) < EPS_Q)
+        {                                    //まったく回転しない時は０割になるので、場合分けする//TODO:
+            return Eigen::Vector3d(0, 0, 0); //return zero vector
+        }
+        return Eigen::Vector3d(q.x(), q.y(), q.z()) * 2.0 * atan2(denom, q.w()) / denom;
+    }
+
     template <typename T_num>
     Eigen::Quaternion<T_num> Vector2Quaternion(Eigen::Vector3d w)
     {
@@ -67,8 +100,23 @@ void manager::imu_callback(const sensor_msgs::Imu::ConstPtr &msg)
     if(imu_previous){   // Previous data is exist.
         ros::Duration diff = (msg->header.stamp - imu_previous->header.stamp);
         Eigen::Vector3d dq = w * diff.toSec();
+        if(dq == Eigen::Vector3d(0,0,0)){
+            ROS_INFO("ZERO");
+        }
         q = q*Vector2Quaternion<double>(dq);
-        ROS_INFO("%f %f %f %f",q.w(),q.x(),q.y(),q.z());
+        
+        q_filtered = q * Vector2Quaternion<double>(0.95*Quaternion2Vector<double>(q_filtered*q.conjugate()));
+        std::cout << "q_filtered:" << q_filtered.coeffs() << std::endl;
+        std::cout << "q_filtered*q.conjugate():" << (q_filtered*q.conjugate()).coeffs() << std::endl;
+        std::cout << "Quaternion2Vector<double>(q_filtered*q.conjugate()):" << Quaternion2Vector<double>(q_filtered*q.conjugate()) << std::endl;
+        std::cout << "Vector2Quaternion<double>(0.95*Quaternion2Vector<double>(q_filtered*q.conjugate())):" << Vector2Quaternion<double>(0.95*Quaternion2Vector<double>(q_filtered*q.conjugate())).coeffs() << std::endl;
+        if(!std::isfinite(q_filtered.w())){
+            ROS_INFO("NAN!");
+        }
+        ROS_INFO("%f,%f,%f,%f,%f,%f,%f,%f",q.w(),q.x(),q.y(),q.z(),q_filtered.w(),q_filtered.x(),q_filtered.y(),q_filtered.z());
+        q = q.normalized();
+        q_filtered = q_filtered.normalized();
+        // q_filtered[1] = q_filtered[0];
     }
     imu_previous = msg;
     

@@ -22,7 +22,7 @@ private:
     image_transport::CameraSubscriber camera_subscriber_;
     ros::Subscriber imu_subscriber_;
     image_transport::Publisher pub_ ;
-    Eigen::Quaterniond q;
+    Eigen::Quaterniond q,q_filtered;
     sensor_msgs::Imu::ConstPtr imu_previous = nullptr;
 };
 
