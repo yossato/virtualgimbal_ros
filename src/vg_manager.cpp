@@ -4,7 +4,7 @@
 namespace virtualgimbal
 {
 
-manager::manager() : pnh_("~"), image_transport_(pnh_), q(1.0, 0, 0, 0), q_filtered(1.0,0,0,0)
+manager::manager() : pnh_("~"), image_transport_(pnh_), q(1.0, 0, 0, 0), q_filtered(1.0,0,0,0), last_vector(0,0,0)
 {
     std::string image = "/image";
     std::string imu_data = "/imu_data";
@@ -15,6 +15,9 @@ manager::manager() : pnh_("~"), image_transport_(pnh_), q(1.0, 0, 0, 0), q_filte
     camera_subscriber_ = image_transport_.subscribeCamera(image, 10, &manager::callback, this);
     imu_subscriber_ = pnh_.subscribe(imu_data, 1000, &manager::imu_callback, this);
     pub_ = image_transport_.advertise("camera/image", 1);
+
+    raw_quaternion_pub = pnh_.advertise<sensor_msgs::Imu>("angle/raw", 1000);
+    filtered_quaternion_pub = pnh_.advertise<sensor_msgs::Imu>("angle/filtered", 1000);
 }
 
 void manager::callback(const sensor_msgs::ImageConstPtr &image, const sensor_msgs::CameraInfoConstPtr &camera_info)
@@ -49,7 +52,7 @@ void manager::callback(const sensor_msgs::ImageConstPtr &image, const sensor_msg
             throw;
         }
         double denom = sqrt(1-q.w()*q.w());
-        if(denom==0.0){//まったく回転しない時は０割になるので、場合分けする
+        if(denom < std::numeric_limits<double>::epsilon()){//まったく回転しない時は０割になるので、場合分けする
             return Eigen::Vector3d(0,0,0);//return zero vector
         }
         double theta_2 = atan2(denom,q.w());
@@ -75,7 +78,7 @@ void manager::callback(const sensor_msgs::ImageConstPtr &image, const sensor_msg
             throw;
         }
         double denom = sqrt(1 - q.w() * q.w());
-        if (fabs(denom) < EPS_Q)
+        if (denom < std::numeric_limits<double>::epsilon())
         {                                    //まったく回転しない時は０割になるので、場合分けする//TODO:
             return Eigen::Vector3d(0, 0, 0); //return zero vector
         }
@@ -113,13 +116,34 @@ void manager::imu_callback(const sensor_msgs::Imu::ConstPtr &msg)
         ros::Duration diff = (msg->header.stamp - imu_previous->header.stamp);
         Eigen::Vector3d dq = w * diff.toSec();
         q = q*Vector2Quaternion<double>(dq);
-        q_filtered = q * Vector2Quaternion<double>(0.95*Quaternion2Vector<double>((q_filtered*q.conjugate()).normalized()));
-        ROS_INFO("%f,%f,%f,%f,%f,%f,%f,%f",q.w(),q.x(),q.y(),q.z(),q_filtered.w(),q_filtered.x(),q_filtered.y(),q_filtered.z());
-        q = q.normalized();
-        q_filtered = q_filtered.normalized();
+        q.normalize();
+
+        Eigen::Vector3d vec = 0.995*Quaternion2Vector<double>((q.conjugate()*q_filtered).normalized(),last_vector);
+        q_filtered = q * Vector2Quaternion<double>(vec);
+        q_filtered.normalize();
+
+        last_vector = vec;
+
+        sensor_msgs::Imu angle_raw,angle_filtered;
+        angle_raw.header = msg->header;
+        angle_raw.orientation.w = q.w();
+        angle_raw.orientation.x = q.x();
+        angle_raw.orientation.y = q.y();
+        angle_raw.orientation.z = q.z();
+        raw_quaternion_pub.publish(angle_raw);
+
+        angle_filtered.header = msg->header;
+        angle_filtered.orientation.w = q_filtered.w();
+        angle_filtered.orientation.x = q_filtered.x();
+        angle_filtered.orientation.y = q_filtered.y();
+        angle_filtered.orientation.z = q_filtered.z();
+        filtered_quaternion_pub.publish(angle_filtered);
+
     }
     imu_previous = msg;
     
+
+
 }
 
 } // namespace virtualgimbal

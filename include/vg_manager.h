@@ -24,6 +24,9 @@ private:
     image_transport::Publisher pub_ ;
     Eigen::Quaterniond q,q_filtered;
     sensor_msgs::Imu::ConstPtr imu_previous = nullptr;
+    ros::Publisher raw_quaternion_pub,filtered_quaternion_pub;  
+    Eigen::Vector3d last_vector;
+
 };
 
 } // namespace virtualgimbal
