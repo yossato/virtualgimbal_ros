@@ -31,8 +31,8 @@ void manager::callback(const sensor_msgs::ImageConstPtr &image, const sensor_msg
     }
     cv::UMat umat_src = cv_ptr->image.getUMat(cv::ACCESS_READ, cv::USAGE_ALLOCATE_DEVICE_MEMORY);
 
-    cv::imshow("received image", umat_src);
-    cv::waitKey(1);
+    // cv::imshow("received image", umat_src);
+    // cv::waitKey(1);
 
     //publish image
     sensor_msgs::ImagePtr msg = cv_bridge::CvImage(image->header, "bgr8", umat_src.getMat(cv::ACCESS_READ)).toImageMsg();
@@ -44,6 +44,10 @@ void manager::callback(const sensor_msgs::ImageConstPtr &image, const sensor_msg
 
     template <typename T_num>
     Eigen::Vector3d Quaternion2Vector(Eigen::Quaternion<T_num> q, Eigen::Vector3d prev){
+        if((q.w() - 1.0) > std::numeric_limits<double>::epsilon()){
+            std::cerr << "Invalid quaternion. Use normalize function of Eigen::Quaternion class." << std::endl << std::flush;
+            throw;
+        }
         double denom = sqrt(1-q.w()*q.w());
         if(denom==0.0){//まったく回転しない時は０割になるので、場合分けする
             return Eigen::Vector3d(0,0,0);//return zero vector
@@ -66,6 +70,10 @@ void manager::callback(const sensor_msgs::ImageConstPtr &image, const sensor_msg
     template <typename T_num>
     Eigen::Vector3d Quaternion2Vector(Eigen::Quaternion<T_num> q)
     {
+        if((q.w() - 1.0) > std::numeric_limits<double>::epsilon()){
+            std::cerr << "Invalid quaternion. Use normalize function of Eigen::Quaternion class." << std::endl << std::flush;
+            throw;
+        }
         double denom = sqrt(1 - q.w() * q.w());
         if (fabs(denom) < EPS_Q)
         {                                    //まったく回転しない時は０割になるので、場合分けする//TODO:
@@ -95,28 +103,20 @@ void manager::callback(const sensor_msgs::ImageConstPtr &image, const sensor_msg
 
 void manager::imu_callback(const sensor_msgs::Imu::ConstPtr &msg)
 {
+    if(!std::isfinite(msg->angular_velocity.x+msg->angular_velocity.y+msg->angular_velocity.z+msg->header.stamp.toSec())){
+        ROS_WARN("Input angular velocity and time stamp contains NaN. Skipped.");
+        return;
+    }
     Eigen::Vector3d w(msg->angular_velocity.x,msg->angular_velocity.y,msg->angular_velocity.z);
     
     if(imu_previous){   // Previous data is exist.
         ros::Duration diff = (msg->header.stamp - imu_previous->header.stamp);
         Eigen::Vector3d dq = w * diff.toSec();
-        if(dq == Eigen::Vector3d(0,0,0)){
-            ROS_INFO("ZERO");
-        }
         q = q*Vector2Quaternion<double>(dq);
-        
-        q_filtered = q * Vector2Quaternion<double>(0.95*Quaternion2Vector<double>(q_filtered*q.conjugate()));
-        std::cout << "q_filtered:" << q_filtered.coeffs() << std::endl;
-        std::cout << "q_filtered*q.conjugate():" << (q_filtered*q.conjugate()).coeffs() << std::endl;
-        std::cout << "Quaternion2Vector<double>(q_filtered*q.conjugate()):" << Quaternion2Vector<double>(q_filtered*q.conjugate()) << std::endl;
-        std::cout << "Vector2Quaternion<double>(0.95*Quaternion2Vector<double>(q_filtered*q.conjugate())):" << Vector2Quaternion<double>(0.95*Quaternion2Vector<double>(q_filtered*q.conjugate())).coeffs() << std::endl;
-        if(!std::isfinite(q_filtered.w())){
-            ROS_INFO("NAN!");
-        }
+        q_filtered = q * Vector2Quaternion<double>(0.95*Quaternion2Vector<double>((q_filtered*q.conjugate()).normalized()));
         ROS_INFO("%f,%f,%f,%f,%f,%f,%f,%f",q.w(),q.x(),q.y(),q.z(),q_filtered.w(),q_filtered.x(),q_filtered.y(),q_filtered.z());
         q = q.normalized();
         q_filtered = q_filtered.normalized();
-        // q_filtered[1] = q_filtered[0];
     }
     imu_previous = msg;
     
