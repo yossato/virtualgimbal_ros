@@ -6,7 +6,7 @@ namespace virtualgimbal
 
     
 
-manager::manager() : pnh_("~"), image_transport_(pnh_), q(1.0, 0, 0, 0), q_filtered(1.0,0,0,0), last_vector(0,0,0)
+manager::manager() : pnh_("~"), image_transport_(pnh_), q(1.0, 0, 0, 0), q_filtered(1.0,0,0,0), last_vector(0,0,0), param(pnh_)
 {
     std::string image = "/image";
     std::string imu_data = "/imu_data";
@@ -20,6 +20,7 @@ manager::manager() : pnh_("~"), image_transport_(pnh_), q(1.0, 0, 0, 0), q_filte
 
     raw_quaternion_pub = pnh_.advertise<sensor_msgs::Imu>("angle/raw", 1000);
     filtered_quaternion_pub = pnh_.advertise<sensor_msgs::Imu>("angle/filtered", 1000);
+
 }
 
 void manager::callback(const sensor_msgs::ImageConstPtr &image, const sensor_msgs::CameraInfoConstPtr &camera_info)

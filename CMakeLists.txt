@@ -144,6 +144,7 @@ include
 add_executable(${PROJECT_NAME}_node src/main.cpp
 src/vg_manager.cpp
 src/rotation.cpp
+src/param.cpp
 )
 
 ## Rename C++ executable without prefix

@@ -11,6 +11,7 @@
 #include <image_transport/image_transport.h>
 #include <opencv2/opencv.hpp>
 #include <Eigen/Dense>
+#include "param.h"
 namespace virtualgimbal
 {
 class manager
@@ -31,9 +32,12 @@ private:
     ros::Publisher raw_quaternion_pub,filtered_quaternion_pub;  
     Eigen::Vector3d last_vector;
 
+    
+
     rotation raw_angle_quaternion;
     rotation filtered_angle_quaternion;
 
+    Parameters param; 
 };
 
 } // namespace virtualgimbal
