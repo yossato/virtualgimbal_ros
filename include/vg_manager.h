@@ -1,7 +1,11 @@
+#ifndef __VIRTUALGIMAL_ROS_VG_MANAGER_H__
+#define __VIRTUALGIMAL_ROS_VG_MANAGER_H__
+
 #include "ros/ros.h"
 #include "sensor_msgs/Image.h"
 #include "sensor_msgs/CameraInfo.h"
 #include "sensor_msgs/Imu.h"
+#include "rotation.h"
 #include <cv.h>
 #include <cv_bridge/cv_bridge.h>
 #include <image_transport/image_transport.h>
@@ -27,6 +31,11 @@ private:
     ros::Publisher raw_quaternion_pub,filtered_quaternion_pub;  
     Eigen::Vector3d last_vector;
 
+    rotation raw_angle_quaternion;
+    rotation filtered_angle_quaternion;
+
 };
 
 } // namespace virtualgimbal
+
+#endif //__VIRTUALGIMAL_ROS_VG_MANAGER_H__

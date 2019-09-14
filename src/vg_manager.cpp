@@ -4,6 +4,8 @@
 namespace virtualgimbal
 {
 
+    
+
 manager::manager() : pnh_("~"), image_transport_(pnh_), q(1.0, 0, 0, 0), q_filtered(1.0,0,0,0), last_vector(0,0,0)
 {
     std::string image = "/image";
@@ -139,6 +141,15 @@ void manager::imu_callback(const sensor_msgs::Imu::ConstPtr &msg)
         angle_filtered.orientation.z = q_filtered.z();
         filtered_quaternion_pub.publish(angle_filtered);
 
+        raw_angle_quaternion.push_back(msg->header.stamp,q);
+        filtered_angle_quaternion.push_back(msg->header.stamp,q_filtered);
+
+        if((ros::Time::now() - ros::Time(0.0))> ros::Duration(3.0)){
+            raw_angle_quaternion.pop_front(ros::Time::now() - ros::Duration(3.0));
+            filtered_angle_quaternion.pop_front(ros::Time::now() - ros::Duration(3.0));
+        }
+
+        ROS_INFO("Size of raw_angle_quaternion:%lu",raw_angle_quaternion.size());
     }
     imu_previous = msg;
     
