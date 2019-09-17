@@ -25,6 +25,14 @@ manager::manager() : pnh_("~"), image_transport_(pnh_), q(1.0, 0, 0, 0), q_filte
 
 void manager::callback(const sensor_msgs::ImageConstPtr &image, const sensor_msgs::CameraInfoConstPtr &camera_info)
 {
+    if(!camera_info_){
+        camera_info_ = std::make_shared<CameraInformation>(std::string("ros_camera"),camera_info->distortion_model,Eigen::Quaterniond(1.0,0.0,0.0,0.0),
+        camera_info->width, camera_info->height,camera_info->P[0],
+        camera_info->P[5], camera_info->P[2], camera_info->P[6],
+        camera_info->D[0],camera_info->D[1],camera_info->D[2],
+        camera_info->D[3],0.0);
+    }
+
     cv_bridge::CvImageConstPtr cv_ptr;
     try
     {

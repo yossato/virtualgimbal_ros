@@ -12,6 +12,7 @@
 #include <opencv2/opencv.hpp>
 #include <Eigen/Dense>
 #include "param.h"
+#include "camera_information.h"
 namespace virtualgimbal
 {
 class manager
@@ -38,6 +39,7 @@ private:
     rotation filtered_angle_quaternion;
 
     Parameters param; 
+    CameraInformationPtr camera_info_;
 };
 
 } // namespace virtualgimbal
