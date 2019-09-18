@@ -4,7 +4,12 @@ project(virtualgimbal_ros)
 ## Compile as C++11, supported in ROS Kinetic and newer
 add_compile_options(-std=c++11)
 
-find_package(OpenCV 3 REQUIRED )
+# find_package(OpenCV 3 REQUIRED )
+
+find_package(OpenCV 4 REQUIRED 
+NO_MODULE 
+PATHS /usr/local 
+NO_DEFAULT_PATH)
 
 include_directories(/usr/local/include/eigen3)
 
@@ -146,6 +151,7 @@ src/vg_manager.cpp
 src/rotation.cpp
 src/param.cpp
 src/camera_information.cpp
+src/cl_manager.cpp
 )
 
 ## Rename C++ executable without prefix

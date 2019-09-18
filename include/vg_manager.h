@@ -8,13 +8,16 @@
 #include "rotation.h"
 #include <cv.h>
 #include <cv_bridge/cv_bridge.h>
-#include <image_transport/image_transport.h>
 #include <opencv2/opencv.hpp>
+#include <image_transport/image_transport.h>
 #include <Eigen/Dense>
 #include "param.h"
 #include "camera_information.h"
+#include "cl_manager.h"
 namespace virtualgimbal
 {
+
+    using MatrixPtr = std::unique_ptr<std::vector<float>>;
 class manager
 {
 public:
@@ -40,6 +43,10 @@ private:
 
     Parameters param; 
     CameraInformationPtr camera_info_;
+
+    // Prepare OpenCL
+    cv::ocl::Context context;
+    cv::String build_opt;
 };
 
 } // namespace virtualgimbal
