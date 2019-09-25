@@ -14,6 +14,7 @@ public:
     void push_back(ros::Time time, Eigen::Quaterniond &q);
     void pop_front(ros::Time time);
     size_t size();
+    void limit_data_length(int length);
     int get(ros::Time time, Eigen::Quaterniond &q);
 private:
     std::deque<std::pair<ros::Time,Eigen::Quaterniond>> data;

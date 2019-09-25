@@ -55,15 +55,30 @@ void manager::callback(const sensor_msgs::ImageConstPtr &image, const sensor_msg
         return;
     }
 
-    MatrixPtr R;
+    MatrixPtr R(new std::vector<float>(camera_info_->height_ * 9));
 
     // Calculate Rotation matrix for every line
-    // for (int row = 0, e = video_param->camera_info->height_; row < e; ++row)
-    // {
-    //     double time_in_row = video_param->getInterval() * frame + resampler_parameter_->start + video_param->camera_info->line_delay_ * (row - video_param->camera_info->height_ * 0.5);
-    //     Eigen::Map<Eigen::Matrix<float, 3, 3, Eigen::RowMajor>>(&R[row * 9], 3, 3) = measured_angular_velocity->getCorrectionQuaternion(time_in_row, filter(filter_strength(row)).getFilterCoefficient()).matrix().cast<float>();
-    // }
+    for (int row = 0, e = camera_info_->height_; row < e; ++row)
+    {
+        ros::Time time_in_row = image->header.stamp + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5));
+        Eigen::Quaterniond raw,filtered;
+        if(raw_angle_quaternion.get(time_in_row,raw))
+        {
+            std::cout << "raw_angle_quaternion: Timing error" << std::endl;
+        }
+        if(filtered_angle_quaternion.get(time_in_row,filtered))
+        {
+            std::cout << "filtered_angle_quaternion: Timing error" << std::endl;
+        }
+        Eigen::Map<Eigen::Matrix<float, 3, 3, Eigen::RowMajor>>(&(*R)[row * 9], 3, 3) = 
+        (raw * filtered.conjugate()).matrix().cast<float>();//順序合ってる？
 
+        // std::cout << "row:" << row << "\r\n R:" << Eigen::Map<Eigen::Matrix<float, 3, 3, Eigen::RowMajor>>(&(*R)[0], 3, 3) << std::endl;
+
+
+    }
+
+    
     // cv::imshow("received image", umat_src);
     // cv::waitKey(1);
 
@@ -180,13 +195,21 @@ void manager::imu_callback(const sensor_msgs::Imu::ConstPtr &msg)
         raw_angle_quaternion.push_back(msg->header.stamp, q);
         filtered_angle_quaternion.push_back(msg->header.stamp, q_filtered);
 
-        if ((ros::Time::now() - ros::Time(0.0)) > ros::Duration(3.0))
-        {
-            raw_angle_quaternion.pop_front(ros::Time::now() - ros::Duration(3.0));
-            filtered_angle_quaternion.pop_front(ros::Time::now() - ros::Duration(3.0));
-        }
+        // if ((ros::Time::now() - ros::Time(0.0)) > ros::Duration(3.0))
+        // {
+            // if(1)
+            // {
+            //     ros::Duration d = (ros::Time::now() - ros::Time(0.0));
+            //     ROS_INFO("Duration:%d.%d",d.sec,d.nsec);
+            // }
+            // raw_angle_quaternion.pop_front(msg->header.stamp - ros::Duration(3.0));
+            // filtered_angle_quaternion.pop_front(msg->header.stamp - ros::Duration(3.0));
+        // }
+        raw_angle_quaternion.limit_data_length(1000);
+        filtered_angle_quaternion.limit_data_length(1000);
+        //　TODO:　時間がジャンプしたら検出して、dataを削除しないと
 
-        ROS_INFO("Size of raw_angle_quaternion:%lu", raw_angle_quaternion.size());
+        // ROS_INFO("Size of raw_angle_quaternion:%lu", raw_angle_quaternion.size());
     }
     imu_previous = msg;
 }
