@@ -6,6 +6,6 @@ int main(int argc, char **argv)
     ros::init(argc,argv, "virtualgimbal_ros");
     std::cout << "hello" << std::endl;
     virtualgimbal::manager mgr;
-    ros::spin();
+    mgr.run();
     return 0;
 }

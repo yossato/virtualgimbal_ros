@@ -4,12 +4,12 @@ project(virtualgimbal_ros)
 ## Compile as C++11, supported in ROS Kinetic and newer
 add_compile_options(-std=c++11)
 
-# find_package(OpenCV 3 REQUIRED )
+find_package(OpenCV 3 REQUIRED )
 
-find_package(OpenCV 4 REQUIRED 
-NO_MODULE 
-PATHS /usr/local 
-NO_DEFAULT_PATH)
+# find_package(OpenCV 4 REQUIRED # Build error
+# NO_MODULE 
+# PATHS /usr/local 
+# NO_DEFAULT_PATH)
 
 include_directories(/usr/local/include/eigen3)
 

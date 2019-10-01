@@ -47,6 +47,11 @@ void manager::callback(const sensor_msgs::ImageConstPtr &image, const sensor_msg
 
     cv::UMat umat_src = cv_ptr->image.getUMat(cv::ACCESS_READ, cv::USAGE_ALLOCATE_DEVICE_MEMORY);
 
+    // Pushback umat
+    src_image.push_back(image->header.stamp,umat_src);
+    src_image.limit_data_length(10);
+    ROS_INFO("src_image.size():%lu",src_image.size());
+
     // TODO check channel
 
     if (umat_src.empty())
@@ -55,32 +60,28 @@ void manager::callback(const sensor_msgs::ImageConstPtr &image, const sensor_msg
         return;
     }
 
-    MatrixPtr R(new std::vector<float>(camera_info_->height_ * 9));
+    // MatrixPtr R(new std::vector<float>(camera_info_->height_ * 9));
 
-    // Calculate Rotation matrix for every line
-    for (int row = 0, e = camera_info_->height_; row < e; ++row)
-    {
-        ros::Time time_in_row = image->header.stamp + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5));
-        Eigen::Quaterniond raw,filtered;
-        if(raw_angle_quaternion.get(time_in_row,raw))
-        {
-            std::cout << "raw_angle_quaternion: Timing error" << std::endl;
-        }
-        if(filtered_angle_quaternion.get(time_in_row,filtered))
-        {
-            std::cout << "filtered_angle_quaternion: Timing error" << std::endl;
-        }
-        Eigen::Map<Eigen::Matrix<float, 3, 3, Eigen::RowMajor>>(&(*R)[row * 9], 3, 3) = 
-        (raw * filtered.conjugate()).matrix().cast<float>();//順序合ってる？
-
-        // std::cout << "row:" << row << "\r\n R:" << Eigen::Map<Eigen::Matrix<float, 3, 3, Eigen::RowMajor>>(&(*R)[0], 3, 3) << std::endl;
-
-
-    }
+    // // Calculate Rotation matrix for every line
+    // for (int row = 0, e = camera_info_->height_; row < e; ++row)
+    // {
+    //     ros::Time time_in_row = image->header.stamp + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5));
+    //     Eigen::Quaterniond raw,filtered;
+    //     if(raw_angle_quaternion.get(time_in_row,raw))
+    //     {
+    //         std::cout << "raw_angle_quaternion: Timing error" << std::endl;
+    //     }
+    //     if(filtered_angle_quaternion.get(time_in_row,filtered))
+    //     {
+    //         std::cout << "filtered_angle_quaternion: Timing error" << std::endl;
+    //     }
+    //     Eigen::Map<Eigen::Matrix<float, 3, 3, Eigen::RowMajor>>(&(*R)[row * 9], 3, 3) = 
+    //     (raw * filtered.conjugate()).matrix().cast<float>();//順序合ってる？
+    // }
 
     
-    // cv::imshow("received image", umat_src);
-    // cv::waitKey(1);
+    cv::imshow("received image", umat_src);
+    cv::waitKey(1);
 
     //publish image
     sensor_msgs::ImagePtr msg = cv_bridge::CvImage(image->header, "bgr8", umat_src.getMat(cv::ACCESS_READ)).toImageMsg();
@@ -212,6 +213,15 @@ void manager::imu_callback(const sensor_msgs::Imu::ConstPtr &msg)
         // ROS_INFO("Size of raw_angle_quaternion:%lu", raw_angle_quaternion.size());
     }
     imu_previous = msg;
+}
+
+void manager::run(){
+    ros::Rate rate(50);
+    while(ros::ok())
+    {
+        ros::spinOnce();
+        rate.sleep();
+    }
 }
 
 } // namespace virtualgimbal

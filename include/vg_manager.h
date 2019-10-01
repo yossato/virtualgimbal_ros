@@ -14,16 +14,24 @@
 #include "param.h"
 #include "camera_information.h"
 #include "cl_manager.h"
+
+
+
 namespace virtualgimbal
 {
 
-    using MatrixPtr = std::unique_ptr<std::vector<float>>;
+using MatrixPtr = std::unique_ptr<std::vector<float>>;
+
+using Rotation = StampedDeque<Eigen::Quaterniond>;
+using Image = StampedDeque<cv::UMat>;
+
 class manager
 {
 public:
     manager();
     void callback(const sensor_msgs::ImageConstPtr& image, const sensor_msgs::CameraInfoConstPtr& camera_info);
     void imu_callback(const sensor_msgs::Imu::ConstPtr &msg);
+    void run();
 private:
     ros::NodeHandle nh_;
     ros::NodeHandle pnh_;
@@ -38,8 +46,10 @@ private:
 
     
 
-    rotation raw_angle_quaternion;
-    rotation filtered_angle_quaternion;
+    Rotation raw_angle_quaternion;
+    Rotation filtered_angle_quaternion;
+
+    Image src_image;
 
     Parameters param; 
     CameraInformationPtr camera_info_;
