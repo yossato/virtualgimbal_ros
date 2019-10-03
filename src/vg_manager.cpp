@@ -23,6 +23,10 @@ manager::manager() : pnh_("~"), image_transport_(pnh_), q(1.0, 0, 0, 0), q_filte
     initializeCL(context);
 }
 
+manager::~manager(){
+    cv::destroyAllWindows();
+}
+
 void manager::callback(const sensor_msgs::ImageConstPtr &image, const sensor_msgs::CameraInfoConstPtr &camera_info)
 {
     if (!camera_info_)
@@ -47,41 +51,21 @@ void manager::callback(const sensor_msgs::ImageConstPtr &image, const sensor_msg
 
     cv::UMat umat_src = cv_ptr->image.getUMat(cv::ACCESS_READ, cv::USAGE_ALLOCATE_DEVICE_MEMORY);
 
-    // Pushback umat
-    src_image.push_back(image->header.stamp,umat_src);
-    src_image.limit_data_length(10);
-    ROS_INFO("src_image.size():%lu",src_image.size());
-
-    // TODO check channel
-
     if (umat_src.empty())
     {
         ROS_WARN("Input image is empty.");
         return;
     }
+    // TODO: check channel
 
-    // MatrixPtr R(new std::vector<float>(camera_info_->height_ * 9));
+    // Push back umat
+    src_image.push_back(image->header.stamp,umat_src);
 
-    // // Calculate Rotation matrix for every line
-    // for (int row = 0, e = camera_info_->height_; row < e; ++row)
-    // {
-    //     ros::Time time_in_row = image->header.stamp + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5));
-    //     Eigen::Quaterniond raw,filtered;
-    //     if(raw_angle_quaternion.get(time_in_row,raw))
-    //     {
-    //         std::cout << "raw_angle_quaternion: Timing error" << std::endl;
-    //     }
-    //     if(filtered_angle_quaternion.get(time_in_row,filtered))
-    //     {
-    //         std::cout << "filtered_angle_quaternion: Timing error" << std::endl;
-    //     }
-    //     Eigen::Map<Eigen::Matrix<float, 3, 3, Eigen::RowMajor>>(&(*R)[row * 9], 3, 3) = 
-    //     (raw * filtered.conjugate()).matrix().cast<float>();//順序合ってる？
-    // }
+    // TODO: Limit queue size
+    // src_image.limit_data_length(10);
+    // ROS_INFO("src_image.size():%lu",src_image.size());
 
-    
-    cv::imshow("received image", umat_src);
-    cv::waitKey(1);
+
 
     //publish image
     sensor_msgs::ImagePtr msg = cv_bridge::CvImage(image->header, "bgr8", umat_src.getMat(cv::ACCESS_READ)).toImageMsg();
@@ -216,9 +200,76 @@ void manager::imu_callback(const sensor_msgs::Imu::ConstPtr &msg)
 }
 
 void manager::run(){
-    ros::Rate rate(50);
+    ros::Rate rate(120);
     while(ros::ok())
     {
+
+        // If an images are available.
+        if(src_image.size())
+        {
+            
+            
+
+            MatrixPtr R(new std::vector<float>(camera_info_->height_ * 9));
+
+            auto &time = src_image.front().first;
+            auto &image = src_image.front().second;
+
+            Eigen::Quaterniond raw,filtered;
+
+            // Check imu data usability
+            if(raw_angle_quaternion.get(time + ros::Duration(camera_info_->line_delay_ * (0 - camera_info_->height_ * 0.5)),raw) || // Top row of image
+            raw_angle_quaternion.get(time + ros::Duration(camera_info_->line_delay_ * ((camera_info_->height_ - 1) - camera_info_->height_ * 0.5)),raw)) // Bottom row of image
+            {
+                ROS_INFO("IMU data is not available. Waiting...");
+                continue;
+            }
+
+            // Calculate Rotation matrix for every line
+            for (int row = 0, e = camera_info_->height_; row < e; ++row)
+            {
+                ros::Time time_in_row = time + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5));
+                
+                if(raw_angle_quaternion.get(time_in_row,raw))
+                {
+                    std::cout << "raw_angle_quaternion: Timing error" << std::endl;
+                }
+                if(filtered_angle_quaternion.get(time_in_row,filtered))
+                {
+                    std::cout << "filtered_angle_quaternion: Timing error" << std::endl;
+                }
+                Eigen::Map<Eigen::Matrix<float, 3, 3, Eigen::RowMajor>>(&(*R)[row * 9], 3, 3) = 
+                (raw * filtered.conjugate()).matrix().cast<float>();//順序合ってる？
+            }
+        
+            ROS_INFO("Matrix:");
+            std::cout << Eigen::Map<Eigen::Matrix<float, 3, 3, Eigen::RowMajor>>(&(*R)[0 * 9], 3, 3) << std::endl << std::flush;
+
+            ROS_INFO("Received image's time stamp: %d.%d, Quarternion:\r\n",time.sec, time.nsec);
+            if(raw_angle_quaternion.get(time,raw))
+            {
+                ROS_WARN("TIMING ERROR");   
+            }
+            else
+            {
+                std::cout << raw.coeffs() << std::endl << std::flush;
+            }
+
+            cv::imshow("received image", src_image.front().second);
+            src_image.pop_front(); 
+            char key = cv::waitKey(1);
+        
+
+            if('q' == key)
+            {
+                ros::shutdown();
+            }
+        }
+        
+
+
+        
+
         ros::spinOnce();
         rate.sleep();
     }

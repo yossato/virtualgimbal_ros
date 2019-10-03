@@ -7,13 +7,13 @@ namespace virtualgimbal
 template <>
 int StampedDeque<Eigen::Quaterniond>::get(ros::Time time, Eigen::Quaterniond &q)
 {
-    std::cout << "Specialized" << std::endl;
+    // std::cout << "Specialized" << std::endl;
     auto it = std::find_if(data.begin(), data.end(), [&](std::pair<ros::Time, Eigen::Quaterniond> x) { return time < x.first; });
     if (data.begin() == it)
     {
         q = data.front().second;
 
-        if (1)
+        if (0)
         {
             ROS_INFO("Input time : %d.%d", time.sec, time.nsec);
             ROS_INFO("Size of data:%lu", data.size());
@@ -32,7 +32,7 @@ int StampedDeque<Eigen::Quaterniond>::get(ros::Time time, Eigen::Quaterniond &q)
     {
         q = data.back().second;
 
-        if (1)
+        if (0)
         {
             ROS_INFO("Input time : %d.%d", time.sec, time.nsec);
             ROS_INFO("Size of data:%lu", data.size());

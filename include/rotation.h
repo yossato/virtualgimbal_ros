@@ -19,7 +19,7 @@ public:
         data.emplace_back(time, q);
     };
 
-    void pop_front(ros::Time time)
+    void pop_old(ros::Time time)
     {
         auto it = std::find_if(data.begin(), data.end(), [&](std::pair<ros::Time, T> x) { return time < x.first; });
         if (data.begin() != it)
@@ -27,6 +27,17 @@ public:
             data.erase(data.begin(), it);
         }
     };
+
+    void pop_front()
+    {
+       
+        data.pop_front();
+    };
+
+    std::pair<ros::Time, T> &front()
+    {
+        return data.front();
+    }
 
     size_t size()
     {
