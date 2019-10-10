@@ -308,8 +308,9 @@ void manager::run(){
                 throw "Failed running the kernel...";
             }
 
-            cv::imshow("received image", src_image.front().second);
+            // cv::imshow("received image", src_image.front().second);
             src_image.pop_front(); 
+            cv::imshow("Stabilized image",*umat_dst_ptr);
             char key = cv::waitKey(1);
         
 
