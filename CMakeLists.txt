@@ -6,6 +6,8 @@ add_compile_options(-std=c++11)
 
 find_package(OpenCV 3 REQUIRED )
 
+configure_file(cl/stabilizer_kernel.cl cl/stabilizer_kernel.cl)
+
 # find_package(OpenCV 4 REQUIRED # Build error
 # NO_MODULE 
 # PATHS /usr/local 

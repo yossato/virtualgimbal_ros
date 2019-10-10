@@ -41,7 +41,7 @@ void manager::callback(const sensor_msgs::ImageConstPtr &image, const sensor_msg
     cv_bridge::CvImageConstPtr cv_ptr;
     try
     {
-        cv_ptr = cv_bridge::toCvShare(image, sensor_msgs::image_encodings::BGR8);
+        cv_ptr = cv_bridge::toCvShare(image, sensor_msgs::image_encodings::BGRA8);
     }
     catch (cv_bridge::Exception &e)
     {
@@ -200,6 +200,10 @@ void manager::imu_callback(const sensor_msgs::Imu::ConstPtr &msg)
 }
 
 void manager::run(){
+
+    const char *kernel_name = "cl/stabilizer_kernel.cl";
+    const char *kernel_function = "stabilizer_function";
+
     ros::Rate rate(120);
     while(ros::ok())
     {
@@ -207,9 +211,6 @@ void manager::run(){
         // If an images are available.
         if(src_image.size())
         {
-            
-            
-
             MatrixPtr R(new std::vector<float>(camera_info_->height_ * 9));
 
             auto &time = src_image.front().first;
@@ -241,9 +242,11 @@ void manager::run(){
                 Eigen::Map<Eigen::Matrix<float, 3, 3, Eigen::RowMajor>>(&(*R)[row * 9], 3, 3) = 
                 (raw * filtered.conjugate()).matrix().cast<float>();//順序合ってる？
             }
-        
+
             ROS_INFO("Matrix:");
             std::cout << Eigen::Map<Eigen::Matrix<float, 3, 3, Eigen::RowMajor>>(&(*R)[0 * 9], 3, 3) << std::endl << std::flush;
+
+
 
             ROS_INFO("Received image's time stamp: %d.%d, Quarternion:\r\n",time.sec, time.nsec);
             if(raw_angle_quaternion.get(time,raw))
@@ -253,6 +256,56 @@ void manager::run(){
             else
             {
                 std::cout << raw.coeffs() << std::endl << std::flush;
+            }
+
+            // Pop old angle quaternions
+            if(camera_info_->line_delay_ >= 0)
+            {
+                raw_angle_quaternion.pop_old(time + ros::Duration(camera_info_->line_delay_ * ((camera_info_->height_ - 1) - camera_info_->height_ * 0.5)));
+                filtered_angle_quaternion.pop_old(time + ros::Duration(camera_info_->line_delay_ * ((camera_info_->height_ - 1) - camera_info_->height_ * 0.5)));
+            }
+            else 
+            {
+                raw_angle_quaternion.pop_old(time + ros::Duration(camera_info_->line_delay_ * (0 - camera_info_->height_ * 0.5)));
+                filtered_angle_quaternion.pop_old(time + ros::Duration(camera_info_->line_delay_ * (0 - camera_info_->height_ * 0.5)));
+            }
+
+            float ik1 = camera_info_->inverse_k1_;
+            float ik2 = camera_info_->inverse_k2_;
+            float ip1 = camera_info_->inverse_p1_;
+            float ip2 = camera_info_->inverse_p2_;
+            float fx = camera_info_->fx_;
+            float fy = camera_info_->fy_;
+            float cx = camera_info_->cx_;
+            float cy = camera_info_->cy_;
+            float zoom = 1.f;
+
+             // Send arguments to kernel
+            cv::ocl::Image2D image_src(image);
+            UMatPtr umat_dst_ptr(new cv::UMat(image.size(), CV_8UC4, cv::ACCESS_WRITE, cv::USAGE_ALLOCATE_DEVICE_MEMORY));
+            cv::ocl::Image2D image_dst(*umat_dst_ptr, false, true);
+            cv::Mat mat_R = cv::Mat(R->size(), 1, CV_32F, R->data());
+            cv::UMat umat_R = mat_R.getUMat(cv::ACCESS_READ, cv::USAGE_ALLOCATE_DEVICE_MEMORY);
+            cv::ocl::Kernel kernel;
+            getKernel(kernel_name, kernel_function, kernel, context, build_opt);
+            kernel.args(image_src, image_dst, cv::ocl::KernelArg::ReadOnlyNoSize(umat_R),
+                        zoom,
+                        ik1,
+                        ik2,
+                        ip1,
+                        ip2,
+                        fx,
+                        fy,
+                        cx,
+                        cy);
+            size_t globalThreads[3] = {(size_t)image.cols, (size_t)image.rows, 1};
+            //size_t localThreads[3] = { 16, 16, 1 };
+            bool success = kernel.run(3, globalThreads, NULL, true);
+            if (!success)
+            {
+                std::cout << "Failed running the kernel..." << std::endl
+                    << std::flush;
+                throw "Failed running the kernel...";
             }
 
             cv::imshow("received image", src_image.front().second);

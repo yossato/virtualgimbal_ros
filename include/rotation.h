@@ -21,11 +21,32 @@ public:
 
     void pop_old(ros::Time time)
     {
+        // std::cout << "Input time:" << time << std::endl;
+        // std::cout << "Before" << std::endl;
+        // for(auto el:data)
+        // {
+        //     std::cout << el.first << std::endl;
+        // }
         auto it = std::find_if(data.begin(), data.end(), [&](std::pair<ros::Time, T> x) { return time < x.first; });
+
+        if(data.end() == it)
+        {
+            std::cerr << "Warning: Failed to pop_old()" << std::endl;
+        }
+
+        // To linear interpolate data, a previous data is required, so decrease iterator.
+        --it;
+
         if (data.begin() != it)
         {
             data.erase(data.begin(), it);
         }
+
+        // std::cout << "After" << std::endl;
+        // for(auto el:data)
+        // {
+        //     std::cout << el.first << std::endl;
+        // }
     };
 
     void pop_front()
