@@ -5,6 +5,7 @@
 #include "sensor_msgs/Image.h"
 #include "sensor_msgs/CameraInfo.h"
 #include "sensor_msgs/Imu.h"
+#include "std_msgs/Float64.h"
 #include "rotation.h"
 #include <cv.h>
 #include <cv_bridge/cv_bridge.h>
@@ -43,7 +44,8 @@ private:
     image_transport::Publisher pub_ ;
     Eigen::Quaterniond q,q_filtered;
     sensor_msgs::Imu::ConstPtr imu_previous = nullptr;
-    ros::Publisher raw_quaternion_pub,filtered_quaternion_pub;  
+    ros::Publisher raw_quaternion_pub,filtered_quaternion_pub,
+    raw_quaternion_queue_size_pub,filtered_quaternion_queue_size_pub;  
     Eigen::Vector3d last_vector;
 
     
@@ -59,6 +61,9 @@ private:
     // Prepare OpenCL
     cv::ocl::Context context;
     cv::String build_opt;
+
+    // Debug
+    bool publish_statistics;
 };
 
 } // namespace virtualgimbal

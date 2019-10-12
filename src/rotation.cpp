@@ -13,7 +13,7 @@ int StampedDeque<Eigen::Quaterniond>::get(ros::Time time, Eigen::Quaterniond &q)
     {
         q = data.front().second;
 
-        if (0)
+        if (1)
         {
             ROS_INFO("Input time : %d.%d", time.sec, time.nsec);
             ROS_INFO("Size of data:%lu", data.size());
@@ -32,7 +32,7 @@ int StampedDeque<Eigen::Quaterniond>::get(ros::Time time, Eigen::Quaterniond &q)
     {
         q = data.back().second;
 
-        if (0)
+        if (1)
         {
             ROS_INFO("Input time : %d.%d", time.sec, time.nsec);
             ROS_INFO("Size of data:%lu", data.size());

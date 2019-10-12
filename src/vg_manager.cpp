@@ -4,7 +4,7 @@
 namespace virtualgimbal
 {
 
-manager::manager() : pnh_("~"), image_transport_(pnh_), q(1.0, 0, 0, 0), q_filtered(1.0, 0, 0, 0), last_vector(0, 0, 0), param(pnh_)
+manager::manager() : pnh_("~"), image_transport_(pnh_), q(1.0, 0, 0, 0), q_filtered(1.0, 0, 0, 0), last_vector(0, 0, 0), param(pnh_), publish_statistics(true)
 {
     std::string image = "/image";
     std::string imu_data = "/imu_data";
@@ -19,6 +19,8 @@ manager::manager() : pnh_("~"), image_transport_(pnh_), q(1.0, 0, 0, 0), q_filte
     raw_quaternion_pub = pnh_.advertise<sensor_msgs::Imu>("angle/raw", 1000);
     filtered_quaternion_pub = pnh_.advertise<sensor_msgs::Imu>("angle/filtered", 1000);
 
+    raw_quaternion_queue_size_pub = pnh_.advertise<std_msgs::Float64>("raw_quaternion_queue_size",10);
+    filtered_quaternion_queue_size_pub = pnh_.advertise<std_msgs::Float64>("filtered_quaternion_queue_size",10);
     // OpenCL
     initializeCL(context);
 }
@@ -208,6 +210,17 @@ void manager::run(){
     while(ros::ok())
     {
 
+        // Show debug information
+        if(publish_statistics)
+        {
+            std_msgs::Float64 msg;
+            msg.data   = (double)raw_angle_quaternion.size();
+            raw_quaternion_queue_size_pub.publish(msg);
+            std_msgs::Float64 msg2;
+            msg2.data   = (double)filtered_angle_quaternion.size();
+            filtered_quaternion_queue_size_pub.publish(msg2);
+        }
+
         // If an images are available.
         if(src_image.size())
         {
@@ -223,6 +236,8 @@ void manager::run(){
             raw_angle_quaternion.get(time + ros::Duration(camera_info_->line_delay_ * ((camera_info_->height_ - 1) - camera_info_->height_ * 0.5)),raw)) // Bottom row of image
             {
                 ROS_INFO("IMU data is not available. Waiting...");
+                ros::spinOnce();
+                rate.sleep();
                 continue;
             }
 
