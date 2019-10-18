@@ -7,13 +7,18 @@ namespace virtualgimbal
 template <>
 int StampedDeque<Eigen::Quaterniond>::get(ros::Time time, Eigen::Quaterniond &q)
 {
+    constexpr bool verbose = false; // FOR DEBUG
     // std::cout << "Specialized" << std::endl;
+    if(data.empty())
+    {
+        return DequeStatus::EMPTY;
+    }
     auto it = std::find_if(data.begin(), data.end(), [&](std::pair<ros::Time, Eigen::Quaterniond> x) { return time < x.first; });
     if (data.begin() == it)
     {
         q = data.front().second;
 
-        if (1)
+        if (verbose)
         {
             ROS_INFO("Input time : %d.%d", time.sec, time.nsec);
             ROS_INFO("Size of data:%lu", data.size());
@@ -26,13 +31,13 @@ int StampedDeque<Eigen::Quaterniond>::get(ros::Time time, Eigen::Quaterniond &q)
             }
         }
 
-        return -1;
+        return DequeStatus::TIME_STAMP_IS_EARLIER_THAN_FRONT;
     }
     else if (data.end() == it)
     {
         q = data.back().second;
 
-        if (1)
+        if (verbose)
         {
             ROS_INFO("Input time : %d.%d", time.sec, time.nsec);
             ROS_INFO("Size of data:%lu", data.size());
@@ -45,7 +50,7 @@ int StampedDeque<Eigen::Quaterniond>::get(ros::Time time, Eigen::Quaterniond &q)
             }
         }
 
-        return 1;
+        return DequeStatus::TIME_STAMP_IS_LATER_THAN_BACK;
     }
     else
     {
@@ -53,7 +58,7 @@ int StampedDeque<Eigen::Quaterniond>::get(ros::Time time, Eigen::Quaterniond &q)
         auto pit = it - 1;
         double a = (time - pit->first).toSec() / (it->first - pit->first).toSec();
         q = pit->second.slerp(a, it->second);
-        return 0;
+        return DequeStatus::GOOD;
     }
 };
 

@@ -48,7 +48,8 @@ private:
     raw_quaternion_queue_size_pub,filtered_quaternion_queue_size_pub;  
     Eigen::Vector3d last_vector;
 
-    
+    ros::Time get_begin_time(ros::Time time);
+    ros::Time get_end_time(ros::Time time);
 
     Rotation raw_angle_quaternion;
     Rotation filtered_angle_quaternion;

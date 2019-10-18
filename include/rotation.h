@@ -7,12 +7,28 @@
 namespace virtualgimbal
 {
 
+     enum DequeStatus
+    {
+        GOOD = 0,
+        TIME_STAMP_IS_EARLIER_THAN_FRONT,
+        TIME_STAMP_IS_LATER_THAN_BACK,
+        EMPTY
+
+    };
+
+
 template <class T>
 class StampedDeque
 {
 public:
-   
+
+
     StampedDeque(){};
+
+    void clear()
+    {
+        data.clear();
+    }
 
     void push_back(ros::Time time, T &q)
     {
@@ -60,6 +76,11 @@ public:
         return data.front();
     }
 
+    std::pair<ros::Time, T> &back()
+    {
+        return data.back();
+    }
+
     size_t size()
     {
         return data.size();
@@ -79,19 +100,37 @@ public:
     {
         int retval = 0;
 
+        if(data.empty())
+        {
+            return DequeStatus::EMPTY;
+        }
+
         auto it = std::find_if(data.begin(), data.end(), [&](std::pair<ros::Time, T> x) { return time == x.first; });
-        if (data.end() == it)   // Not found
+        if (data.begin() == it)
+        {
+            q = data.front().second;
+
+            return DequeStatus::TIME_STAMP_IS_EARLIER_THAN_FRONT;
+        }
+        else if (data.end() == it)   // Not found
         {
             q = T();
             std::cerr << "Failed to get()." << std::endl;
-            return 1;
+            return DequeStatus::TIME_STAMP_IS_LATER_THAN_BACK;
         }
         else
         {
             q = it->second;
-            return 0;
+            return DequeStatus::GOOD;
         }
     };
+
+    void print_all()
+    {
+        for(auto &el:data){
+            std::cout << el.first << ":" << el.second.coeffs().transpose() << std::endl;
+        }
+    }
 
 private:
     std::deque<std::pair<ros::Time, T>> data;
