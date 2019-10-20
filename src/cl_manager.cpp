@@ -33,20 +33,31 @@ void initializeCL(cv::ocl::Context &context)
 
 void getKernel(const char *kernel_code_file_name, const char *kernel_function, cv::ocl::Kernel &kernel, cv::ocl::Context &context, std::string build_opt)
 {
+    static const char* kernel_name = nullptr;
+    static std::shared_ptr<cv::ocl::ProgramSource> program_source;
 
+    if(kernel_name != kernel_code_file_name)
+    {
+        std::ifstream ifs(kernel_code_file_name);
+        std::string kernelSource((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+        program_source = std::make_shared<cv::ocl::ProgramSource>(kernelSource);
+        kernel_name = kernel_code_file_name;
+    }
 
-    std::ifstream ifs(kernel_code_file_name);
-
-        
-    std::string kernelSource((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
-    cv::ocl::ProgramSource programSource(kernelSource);
+    if (0)
+    {
+        std::ifstream ifs(kernel_code_file_name);
+        std::string kernelSource((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+        cv::ocl::ProgramSource program_source(kernelSource);
+    }
 
     // Compile the kernel code
     cv::String errmsg;
-    cv::ocl::Program program = context.getProg(programSource, build_opt, errmsg);
+    cv::ocl::Program program = context.getProg(*program_source, build_opt, errmsg);
     if (NULL == program.ptr())
     {
-        std::cerr << errmsg << std::endl << std::flush;
+        std::cerr << errmsg << std::endl
+                  << std::flush;
         throw "getProg failed.";
     }
 

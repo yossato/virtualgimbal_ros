@@ -12,20 +12,21 @@ manager::manager() : pnh_("~"), image_transport_(pnh_), q(1.0, 0, 0, 0), q_filte
     pnh_.param("imu_data", imu_data, imu_data);
     ROS_INFO("image topic is %s", image.c_str());
     ROS_INFO("imu_data topic is %s", imu_data.c_str());
-    camera_subscriber_ = image_transport_.subscribeCamera(image, 10, &manager::callback, this);
-    imu_subscriber_ = pnh_.subscribe(imu_data, 1000, &manager::imu_callback, this);
+    camera_subscriber_ = image_transport_.subscribeCamera(image, 100, &manager::callback, this);
+    imu_subscriber_ = pnh_.subscribe(imu_data, 10000, &manager::imu_callback, this);
     pub_ = image_transport_.advertise("camera/image", 1);
 
     raw_quaternion_pub = pnh_.advertise<sensor_msgs::Imu>("angle/raw", 1000);
     filtered_quaternion_pub = pnh_.advertise<sensor_msgs::Imu>("angle/filtered", 1000);
 
-    raw_quaternion_queue_size_pub = pnh_.advertise<std_msgs::Float64>("raw_quaternion_queue_size",10);
-    filtered_quaternion_queue_size_pub = pnh_.advertise<std_msgs::Float64>("filtered_quaternion_queue_size",10);
+    raw_quaternion_queue_size_pub = pnh_.advertise<std_msgs::Float64>("raw_quaternion_queue_size", 10);
+    filtered_quaternion_queue_size_pub = pnh_.advertise<std_msgs::Float64>("filtered_quaternion_queue_size", 10);
     // OpenCL
     initializeCL(context);
 }
 
-manager::~manager(){
+manager::~manager()
+{
     cv::destroyAllWindows();
 }
 
@@ -40,10 +41,10 @@ void manager::callback(const sensor_msgs::ImageConstPtr &image, const sensor_msg
                                                            camera_info->D[3], 0.0);
     }
 
-    if(image_previous)
+    if (image_previous)
     {
         // Jamp to back
-        if((image->header.stamp-image_previous->header.stamp).toSec() < 0)
+        if ((image->header.stamp - image_previous->header.stamp).toSec() < 0)
         {
             ROS_INFO("image time stamp jamp is detected.");
             src_image.clear();
@@ -72,13 +73,11 @@ void manager::callback(const sensor_msgs::ImageConstPtr &image, const sensor_msg
     // TODO: check channel
 
     // Push back umat
-    src_image.push_back(image->header.stamp,umat_src);
+    src_image.push_back(image->header.stamp, umat_src);
 
     // TODO: Limit queue size
     // src_image.limit_data_length(10);
     // ROS_INFO("src_image.size():%lu",src_image.size());
-
-
 
     //publish image
     sensor_msgs::ImagePtr msg = cv_bridge::CvImage(image->header, "bgr8", umat_src.getMat(cv::ACCESS_READ)).toImageMsg();
@@ -166,7 +165,7 @@ void manager::imu_callback(const sensor_msgs::Imu::ConstPtr &msg)
     if (imu_previous)
     { // Previous data is exist.
         ros::Duration diff = (msg->header.stamp - imu_previous->header.stamp);
-        if(diff.toSec() < 0)
+        if (diff.toSec() < 0)
         {
             ROS_INFO("Jump");
             imu_previous = nullptr;
@@ -202,23 +201,19 @@ void manager::imu_callback(const sensor_msgs::Imu::ConstPtr &msg)
         raw_angle_quaternion.push_back(msg->header.stamp, q);
         filtered_angle_quaternion.push_back(msg->header.stamp, q_filtered);
 
-        
-        
-
         // if ((ros::Time::now() - ros::Time(0.0)) > ros::Duration(3.0))
         // {
-            // if(1)
-            // {
-            //     ros::Duration d = (ros::Time::now() - ros::Time(0.0));
-            //     ROS_INFO("Duration:%d.%d",d.sec,d.nsec);
-            // }
-            // raw_angle_quaternion.pop_front(msg->header.stamp - ros::Duration(3.0));
-            // filtered_angle_quaternion.pop_front(msg->header.stamp - ros::Duration(3.0));
+        // if(1)
+        // {
+        //     ros::Duration d = (ros::Time::now() - ros::Time(0.0));
+        //     ROS_INFO("Duration:%d.%d",d.sec,d.nsec);
+        // }
+        // raw_angle_quaternion.pop_front(msg->header.stamp - ros::Duration(3.0));
+        // filtered_angle_quaternion.pop_front(msg->header.stamp - ros::Duration(3.0));
         // }
 
         // raw_angle_quaternion.limit_data_length(1000);
         // filtered_angle_quaternion.limit_data_length(1000);
-
 
         // ROS_INFO("Size of raw_angle_quaternion:%lu", raw_angle_quaternion.size());
     }
@@ -228,7 +223,7 @@ void manager::imu_callback(const sensor_msgs::Imu::ConstPtr &msg)
 ros::Time manager::get_begin_time(ros::Time time)
 {
     ros::Time begin_time;
-    if(camera_info_->line_delay_ >= 0.0)
+    if (camera_info_->line_delay_ >= 0.0)
     {
         begin_time = time + ros::Duration(camera_info_->line_delay_ * (0 - camera_info_->height_ * 0.5));
     }
@@ -242,146 +237,130 @@ ros::Time manager::get_begin_time(ros::Time time)
 ros::Time manager::get_end_time(ros::Time time)
 {
     ros::Time end_time;
-    if(camera_info_->line_delay_ >= 0.0)
+    if (camera_info_->line_delay_ >= 0.0)
     {
-        end_time   = time + ros::Duration(camera_info_->line_delay_ * ((camera_info_->height_ - 1) - camera_info_->height_ * 0.5));
+        end_time = time + ros::Duration(camera_info_->line_delay_ * ((camera_info_->height_ - 1) - camera_info_->height_ * 0.5));
     }
     else
     {
-        end_time   = time + ros::Duration(camera_info_->line_delay_ * (0 - camera_info_->height_ * 0.5));
+        end_time = time + ros::Duration(camera_info_->line_delay_ * (0 - camera_info_->height_ * 0.5));
     }
     return end_time;
 }
 
-void manager::run(){
+void manager::run()
+{
 
     const char *kernel_name = "cl/stabilizer_kernel.cl";
     const char *kernel_function = "stabilizer_function";
 
     ros::Rate rate(120);
-    while(ros::ok())
+    while (ros::ok())
     {
 
         // Show debug information
-        if(publish_statistics)
+        if (publish_statistics)
         {
             std_msgs::Float64 msg;
-            msg.data   = (double)raw_angle_quaternion.size();
+            msg.data = (double)raw_angle_quaternion.size();
             raw_quaternion_queue_size_pub.publish(msg);
             std_msgs::Float64 msg2;
-            msg2.data   = (double)filtered_angle_quaternion.size();
+            msg2.data = (double)filtered_angle_quaternion.size();
             filtered_quaternion_queue_size_pub.publish(msg2);
         }
 
         // If an images are available.
-        if(src_image.size())
+        if (src_image.size())
         {
             MatrixPtr R(new std::vector<float>(camera_info_->height_ * 9));
 
-            // auto &time = src_image.front().first;
-            // auto &image = src_image.front().second;
+            Eigen::Quaterniond raw, filtered;
 
-            Eigen::Quaterniond raw,filtered;
-
-            if((0 == raw_angle_quaternion.size()) || (0 == filtered_angle_quaternion.size()))
+            // Wait for IMU data ariving.
+            if ((0 == raw_angle_quaternion.size()) || (0 == filtered_angle_quaternion.size()))
             {
                 ros::spinOnce();
                 rate.sleep();
                 continue;
             }
 
-            // ros::Time begin_time,end_time;
-            // if(camera_info_->line_delay_ >= 0.0)
-            // {
-            //     begin_time = time + ros::Duration(camera_info_->line_delay_ * (0 - camera_info_->height_ * 0.5));
-            //     end_time   = time + ros::Duration(camera_info_->line_delay_ * ((camera_info_->height_ - 1) - camera_info_->height_ * 0.5));
-            // }
-            // else
-            // {
-            //     begin_time = time + ros::Duration(camera_info_->line_delay_ * ((camera_info_->height_ - 1) - camera_info_->height_ * 0.5));
-            //     end_time   = time + ros::Duration(camera_info_->line_delay_ * (0 - camera_info_->height_ * 0.5));
-            // }
-            
-            // 1.IMUデータより古い画像への対処 → 画像を消去
-            //  a.IMUデータの先頭より画像が古いか判定
-            while((DequeStatus::TIME_STAMP_IS_EARLIER_THAN_FRONT == raw_angle_quaternion.get(get_begin_time(src_image.front().first),raw)) ||
-            (DequeStatus::TIME_STAMP_IS_EARLIER_THAN_FRONT == filtered_angle_quaternion.get(get_begin_time(src_image.front().first),filtered))){
-                
-                // raw_angle_quaternion.print_all();
-                // std::cout << get_begin_time(src_image.front().first) << std::endl;
-
-                
+            // If an image is older than IMU angle time stamp, delete the image since the image is not be able to be synchronized with IMU.
+            while ((DequeStatus::TIME_STAMP_IS_EARLIER_THAN_FRONT == raw_angle_quaternion.get(get_begin_time(src_image.front().first), raw)) ||
+                   (DequeStatus::TIME_STAMP_IS_EARLIER_THAN_FRONT == filtered_angle_quaternion.get(get_begin_time(src_image.front().first), filtered)))
+            {
                 src_image.pop_front();
-                ROS_WARN("Image is discarded.");
-                if(!src_image.size())
+                ROS_WARN("Image is discarded, since Image has old time stamp.");
+                if (!src_image.size())
                 {
                     break;
                 }
             }
-            if(!src_image.size())
+            if (!src_image.size())
             {
                 ros::spinOnce();
                 rate.sleep();
                 continue;
             }
 
-            // 2.IMUの情報がまだ到着していないケースへの対処
-            if((DequeStatus::TIME_STAMP_IS_LATER_THAN_BACK == raw_angle_quaternion.get(get_end_time(src_image.front().first),raw)) ||
-            (DequeStatus::TIME_STAMP_IS_LATER_THAN_BACK == filtered_angle_quaternion.get(get_end_time(src_image.front().first),filtered))){
-                // TODO : Emptyの追加
+            // Try to get IMU angle.
+            if ((DequeStatus::TIME_STAMP_IS_LATER_THAN_BACK == raw_angle_quaternion.get(get_end_time(src_image.front().first), raw)) ||
+                (DequeStatus::TIME_STAMP_IS_LATER_THAN_BACK == filtered_angle_quaternion.get(get_end_time(src_image.front().first), filtered)))
+            {
+                // If angles are not available, wait for it.
                 ROS_WARN("Waiting for IMU data.");
                 ros::spinOnce();
                 rate.sleep();
                 continue;
             }
 
-            // Calculate Rotation matrix for every line
+            // Calculate Rotation matrix for each line
             for (int row = 0, e = camera_info_->height_; row < e; ++row)
             {
-                int status = raw_angle_quaternion.get(src_image.front().first + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)),raw);
-                
-                if(DequeStatus::GOOD != status)
+                int status = raw_angle_quaternion.get(src_image.front().first + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)), raw);
+
+                if (DequeStatus::GOOD != status)
                 {
-                    ROS_INFO("Raw Status:%d, size:%ld",status,raw_angle_quaternion.size());
-                    ROS_INFO("Filtered Status:%d, size:%ld",status,filtered_angle_quaternion.size());
-                    std::cout << "raw_angle_quaternion: Timing error" << std::endl;
+                    // ROS_INFO("Raw Status:%d, size:%ld", status, raw_angle_quaternion.size());
+                    // ROS_INFO("Filtered Status:%d, size:%ld", status, filtered_angle_quaternion.size());
+                    // std::cout << "raw_angle_quaternion: Timing error" << std::endl;
                 }
                 // status = filtered_angle_quaternion.get(time_in_row,filtered);
-                status = filtered_angle_quaternion.get(src_image.front().first + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)),filtered);
-                
-                if(DequeStatus::GOOD != status)
+                status = filtered_angle_quaternion.get(src_image.front().first + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)), filtered);
+
+                if (DequeStatus::GOOD != status)
                 {
-                    ROS_INFO("Raw Status:%d, size:%ld",status,raw_angle_quaternion.size());
-                    ROS_INFO("Filtered Status:%d, size:%ld",status,filtered_angle_quaternion.size());
-                    std::cout << "filtered_angle_quaternion: Timing error" << std::endl;
+                    // ROS_INFO("Raw Status:%d, size:%ld", status, raw_angle_quaternion.size());
+                    // ROS_INFO("Filtered Status:%d, size:%ld", status, filtered_angle_quaternion.size());
+                    // std::cout << "filtered_angle_quaternion: Timing error" << std::endl;
                 }
-                Eigen::Map<Eigen::Matrix<float, 3, 3, Eigen::RowMajor>>(&(*R)[row * 9], 3, 3) = 
-                (raw * filtered.conjugate()).matrix().cast<float>();//順序合ってる？
+                Eigen::Map<Eigen::Matrix<float, 3, 3, Eigen::RowMajor>>(&(*R)[row * 9], 3, 3) =
+                    (raw * filtered.conjugate()).matrix().cast<float>(); //順序合ってる？
             }
 
-            if(0)
+            if (0)
             {
                 ROS_INFO("Matrix:");
-                std::cout << Eigen::Map<Eigen::Matrix<float, 3, 3, Eigen::RowMajor>>(&(*R)[0 * 9], 3, 3) << std::endl << std::flush;
-                ROS_INFO("Received image's time stamp: %d.%d, Quarternion:\r\n",src_image.front().first.sec, src_image.front().first.nsec);
-                if(DequeStatus::GOOD != raw_angle_quaternion.get(src_image.front().first,raw))
+                std::cout << Eigen::Map<Eigen::Matrix<float, 3, 3, Eigen::RowMajor>>(&(*R)[0 * 9], 3, 3) << std::endl
+                          << std::flush;
+                ROS_INFO("Received image's time stamp: %d.%d, Quarternion:\r\n", src_image.front().first.sec, src_image.front().first.nsec);
+                if (DequeStatus::GOOD != raw_angle_quaternion.get(src_image.front().first, raw))
                 {
-                    ROS_WARN("TIMING ERROR");   
+                    ROS_WARN("TIMING ERROR");
                 }
                 else
                 {
-                    std::cout << raw.coeffs() << std::endl << std::flush;
+                    std::cout << raw.coeffs() << std::endl
+                              << std::flush;
                 }
             }
 
-
             // Pop old angle quaternions
-            if(camera_info_->line_delay_ >= 0)
+            if (camera_info_->line_delay_ >= 0)
             {
                 raw_angle_quaternion.pop_old(src_image.front().first + ros::Duration(camera_info_->line_delay_ * ((camera_info_->height_ - 1) - camera_info_->height_ * 0.5)));
                 filtered_angle_quaternion.pop_old(src_image.front().first + ros::Duration(camera_info_->line_delay_ * ((camera_info_->height_ - 1) - camera_info_->height_ * 0.5)));
             }
-            else 
+            else
             {
                 raw_angle_quaternion.pop_old(src_image.front().first + ros::Duration(camera_info_->line_delay_ * (0 - camera_info_->height_ * 0.5)));
                 filtered_angle_quaternion.pop_old(src_image.front().first + ros::Duration(camera_info_->line_delay_ * (0 - camera_info_->height_ * 0.5)));
@@ -400,8 +379,7 @@ void manager::run(){
             auto &time = src_image.front().first;
             auto &image = src_image.front().second;
 
-
-             // Send arguments to kernel
+            // Send arguments to kernel
             cv::ocl::Image2D image_src(image);
             UMatPtr umat_dst_ptr(new cv::UMat(image.size(), CV_8UC4, cv::ACCESS_WRITE, cv::USAGE_ALLOCATE_DEVICE_MEMORY));
             cv::ocl::Image2D image_dst(*umat_dst_ptr, false, true);
@@ -425,26 +403,22 @@ void manager::run(){
             if (!success)
             {
                 std::cout << "Failed running the kernel..." << std::endl
-                    << std::flush;
+                          << std::flush;
                 throw "Failed running the kernel...";
             }
 
             // cv::imshow("received image", src_image.front().second);
-            src_image.pop_front(); 
-            cv::imshow("Stabilized image",*umat_dst_ptr);
-
+            src_image.pop_front();
+            cv::imshow("Stabilized image", *umat_dst_ptr);
         }
-        
-        char key = cv::waitKey(1);
-    
 
-        if('q' == key)
+        char key = cv::waitKey(1);
+
+        if ('q' == key)
         {
             cv::destroyAllWindows();
             ros::shutdown();
         }
-
-        
 
         ros::spinOnce();
         rate.sleep();
