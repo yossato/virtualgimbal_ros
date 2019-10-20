@@ -115,7 +115,7 @@ public:
         else if (data.end() == it)   // Not found
         {
             q = T();
-            std::cerr << "Failed to get()." << std::endl;
+            // std::cerr << "Failed to get()." << std::endl;
             return DequeStatus::TIME_STAMP_IS_LATER_THAN_BACK;
         }
         else

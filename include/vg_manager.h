@@ -44,6 +44,7 @@ private:
     image_transport::Publisher pub_ ;
     Eigen::Quaterniond q,q_filtered;
     sensor_msgs::Imu::ConstPtr imu_previous = nullptr;
+    sensor_msgs::ImageConstPtr image_previous = nullptr;
     ros::Publisher raw_quaternion_pub,filtered_quaternion_pub,
     raw_quaternion_queue_size_pub,filtered_quaternion_queue_size_pub;  
     Eigen::Vector3d last_vector;

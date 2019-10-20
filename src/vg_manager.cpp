@@ -40,6 +40,17 @@ void manager::callback(const sensor_msgs::ImageConstPtr &image, const sensor_msg
                                                            camera_info->D[3], 0.0);
     }
 
+    if(image_previous)
+    {
+        // Jamp to back
+        if((image->header.stamp-image_previous->header.stamp).toSec() < 0)
+        {
+            ROS_INFO("image time stamp jamp is detected.");
+            src_image.clear();
+            image_previous = nullptr;
+        }
+    }
+
     cv_bridge::CvImageConstPtr cv_ptr;
     try
     {
@@ -72,6 +83,7 @@ void manager::callback(const sensor_msgs::ImageConstPtr &image, const sensor_msg
     //publish image
     sensor_msgs::ImagePtr msg = cv_bridge::CvImage(image->header, "bgr8", umat_src.getMat(cv::ACCESS_READ)).toImageMsg();
     pub_.publish(msg);
+    image_previous = image;
 }
 
 #define EPS_Q 1E-4
@@ -271,6 +283,13 @@ void manager::run(){
 
             Eigen::Quaterniond raw,filtered;
 
+            if((0 == raw_angle_quaternion.size()) || (0 == filtered_angle_quaternion.size()))
+            {
+                ros::spinOnce();
+                rate.sleep();
+                continue;
+            }
+
             // ros::Time begin_time,end_time;
             // if(camera_info_->line_delay_ >= 0.0)
             // {
@@ -309,6 +328,7 @@ void manager::run(){
             // 2.IMUの情報がまだ到着していないケースへの対処
             if((DequeStatus::TIME_STAMP_IS_LATER_THAN_BACK == raw_angle_quaternion.get(get_end_time(src_image.front().first),raw)) ||
             (DequeStatus::TIME_STAMP_IS_LATER_THAN_BACK == filtered_angle_quaternion.get(get_end_time(src_image.front().first),filtered))){
+                // TODO : Emptyの追加
                 ROS_WARN("Waiting for IMU data.");
                 ros::spinOnce();
                 rate.sleep();
@@ -318,20 +338,21 @@ void manager::run(){
             // Calculate Rotation matrix for every line
             for (int row = 0, e = camera_info_->height_; row < e; ++row)
             {
-                // ros::Time time_in_row = time + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5));
-                // int status = raw_angle_quaternion.get(time_in_row,raw);
                 int status = raw_angle_quaternion.get(src_image.front().first + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)),raw);
-                // ROS_INFO("%d.%d",time_in_row.sec,time_in_row.nsec);
-                ROS_INFO("Raw Status:%d, size:%ld",status,raw_angle_quaternion.size());
-                if(status)
+                
+                if(DequeStatus::GOOD != status)
                 {
+                    ROS_INFO("Raw Status:%d, size:%ld",status,raw_angle_quaternion.size());
+                    ROS_INFO("Filtered Status:%d, size:%ld",status,filtered_angle_quaternion.size());
                     std::cout << "raw_angle_quaternion: Timing error" << std::endl;
                 }
                 // status = filtered_angle_quaternion.get(time_in_row,filtered);
                 status = filtered_angle_quaternion.get(src_image.front().first + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)),filtered);
-                ROS_INFO("Filtered Status:%d, size:%ld",status,filtered_angle_quaternion.size());
-                if(status)
+                
+                if(DequeStatus::GOOD != status)
                 {
+                    ROS_INFO("Raw Status:%d, size:%ld",status,raw_angle_quaternion.size());
+                    ROS_INFO("Filtered Status:%d, size:%ld",status,filtered_angle_quaternion.size());
                     std::cout << "filtered_angle_quaternion: Timing error" << std::endl;
                 }
                 Eigen::Map<Eigen::Matrix<float, 3, 3, Eigen::RowMajor>>(&(*R)[row * 9], 3, 3) = 
@@ -419,6 +440,7 @@ void manager::run(){
 
         if('q' == key)
         {
+            cv::destroyAllWindows();
             ros::shutdown();
         }
 
