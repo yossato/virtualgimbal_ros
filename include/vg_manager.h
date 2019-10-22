@@ -60,6 +60,12 @@ private:
     Parameters param; 
     CameraInformationPtr camera_info_;
 
+    // Image processing parameters
+    float zoom_;
+    bool enable_black_space_removal_;
+    float cutoff_frequency_;
+    float a1_;
+
     // Prepare OpenCL
     cv::ocl::Context context;
     cv::String build_opt;

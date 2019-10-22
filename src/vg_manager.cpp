@@ -4,7 +4,9 @@
 namespace virtualgimbal
 {
 
-manager::manager() : pnh_("~"), image_transport_(pnh_), q(1.0, 0, 0, 0), q_filtered(1.0, 0, 0, 0), last_vector(0, 0, 0), param(pnh_), publish_statistics(true)
+manager::manager() : pnh_("~"), image_transport_(pnh_), q(1.0, 0, 0, 0), q_filtered(1.0, 0, 0, 0),
+ last_vector(0, 0, 0), param(pnh_), publish_statistics(true),
+ zoom_(1.3f),enable_black_space_removal_(true),cutoff_frequency_(0.5)
 {
     std::string image = "/image";
     std::string imu_data = "/imu_data";
@@ -12,6 +14,16 @@ manager::manager() : pnh_("~"), image_transport_(pnh_), q(1.0, 0, 0, 0), q_filte
     pnh_.param("imu_data", imu_data, imu_data);
     ROS_INFO("image topic is %s", image.c_str());
     ROS_INFO("imu_data topic is %s", imu_data.c_str());
+
+    pnh_.param("zoom_factor",zoom_,zoom_);
+    if(zoom_ < 1.0)
+    {
+        ROS_ERROR("zoom_factor must be larger than 1.0.");
+        throw;
+    }
+    pnh_.param("enable_black_space_removal",enable_black_space_removal_,enable_black_space_removal_);
+    pnh_.param("cutoff_frequency",cutoff_frequency_,cutoff_frequency_);
+
     camera_subscriber_ = image_transport_.subscribeCamera(image, 100, &manager::callback, this);
     imu_subscriber_ = pnh_.subscribe(imu_data, 10000, &manager::imu_callback, this);
     pub_ = image_transport_.advertise("camera/image", 1);
@@ -21,6 +33,7 @@ manager::manager() : pnh_("~"), image_transport_(pnh_), q(1.0, 0, 0, 0), q_filte
 
     raw_quaternion_queue_size_pub = pnh_.advertise<std_msgs::Float64>("raw_quaternion_queue_size", 10);
     filtered_quaternion_queue_size_pub = pnh_.advertise<std_msgs::Float64>("filtered_quaternion_queue_size", 10);
+
     // OpenCL
     initializeCL(context);
 }
@@ -176,8 +189,14 @@ void manager::imu_callback(const sensor_msgs::Imu::ConstPtr &msg)
         Eigen::Vector3d dq = w * diff.toSec();
         q = q * Vector2Quaternion<double>(dq);
         q.normalize();
+        // Bilinear transform, prewarping
+        float w_c = 2*CV_PI*cutoff_frequency_;
+        float T = diff.toSec();
+        float w_a = tan(w_c*T/2.f);
+        float a1 = (1.f - w_a) / (1.f + w_a); 
 
-        Eigen::Vector3d vec = 0.995 * Quaternion2Vector<double>((q.conjugate() * q_filtered).normalized(), last_vector);
+
+        Eigen::Vector3d vec = a1 * Quaternion2Vector<double>((q.conjugate() * q_filtered).normalized(), last_vector);
         q_filtered = q * Vector2Quaternion<double>(vec);
         q_filtered.normalize();
 
@@ -374,7 +393,7 @@ void manager::run()
             float fy = camera_info_->fy_;
             float cx = camera_info_->cx_;
             float cy = camera_info_->cy_;
-            float zoom = 1.f;
+            // float zoom = 1.f;
 
             auto &time = src_image.front().first;
             auto &image = src_image.front().second;
@@ -387,16 +406,7 @@ void manager::run()
             cv::UMat umat_R = mat_R.getUMat(cv::ACCESS_READ, cv::USAGE_ALLOCATE_DEVICE_MEMORY);
             cv::ocl::Kernel kernel;
             getKernel(kernel_name, kernel_function, kernel, context, build_opt);
-            kernel.args(image_src, image_dst, cv::ocl::KernelArg::ReadOnlyNoSize(umat_R),
-                        zoom,
-                        ik1,
-                        ik2,
-                        ip1,
-                        ip2,
-                        fx,
-                        fy,
-                        cx,
-                        cy);
+            kernel.args(image_src, image_dst, cv::ocl::KernelArg::ReadOnlyNoSize(umat_R),zoom_,ik1,ik2,ip1,ip2,fx,fy,cx,cy);
             size_t globalThreads[3] = {(size_t)image.cols, (size_t)image.rows, 1};
             //size_t localThreads[3] = { 16, 16, 1 };
             bool success = kernel.run(3, globalThreads, NULL, true);
