@@ -154,6 +154,7 @@ src/rotation.cpp
 src/param.cpp
 src/camera_information.cpp
 src/cl_manager.cpp
+src/SO3Filters.cpp
 )
 
 ## Rename C++ executable without prefix

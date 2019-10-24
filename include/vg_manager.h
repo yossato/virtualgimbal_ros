@@ -21,7 +21,7 @@
 namespace virtualgimbal
 {
 
-using MatrixPtr = std::unique_ptr<std::vector<float>>;
+using MatrixPtr = std::shared_ptr<std::vector<float>>;
 
 using Rotation = StampedDeque<Eigen::Quaterniond>;
 using Image = StampedDeque<cv::UMat>;
