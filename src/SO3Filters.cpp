@@ -1,5 +1,7 @@
 #include "SO3Filters.h"
 
+
+
 // void gradientLimit(Eigen::VectorXd &input, double maximum_gradient_)
 // {
 //     input = -1 * input;
@@ -68,28 +70,28 @@ std::vector<Eigen::Array2d, Eigen::aligned_allocator<Eigen::Array2d>> getSparseC
     double u_max = camera_info->width_ - 1.0;
     double v_max = camera_info->height_ - 1.0;
     // Top
-    for (int i = 0; i <= n; ++i)
+    for (int i = 0; i < n; ++i)
     {
-        point << (double)i / (double)n * u_max, 0.0;
+        point << (double)i / (double)(n-1) * u_max, 0.0;
         contour.push_back(point);
     }
     // Bottom
-    for (int i = 0; i <= n; ++i)
+    for (int i = 0; i < n; ++i)
     {
-        point << (double)i / (double)n * u_max, v_max;
+        point << (double)i / (double)(n-1) * u_max, v_max;
         contour.push_back(point);
     }
 
     // Left
     for (int i = 1; i < n - 1; ++i)
     {
-        point << 0.0, (double)i / (double)n * v_max;
+        point << 0.0, (double)i / (double)(n-1) * v_max;
         contour.push_back(point);
     }
     // Right
     for (int i = 0; i < n - 1; ++i)
     {
-        point << u_max, (double)i / (double)n * v_max;
+        point << u_max, (double)i / (double)(n-1) * v_max;
         contour.push_back(point);
     }
     return contour;
@@ -109,6 +111,7 @@ std::vector<Eigen::Array2d, Eigen::aligned_allocator<Eigen::Array2d>> getSparseC
  * @retval true:成功 false:折り返し発生で失敗
  **/
 void getUndistortUnrollingContour(
+    double ratio,
     MatrixPtr R,
     std::vector<Eigen::Array2d, Eigen::aligned_allocator<Eigen::Array2d>> &contour,
     double zoom,
@@ -132,6 +135,20 @@ void getUndistortUnrollingContour(
 
     contour.clear();
     std::vector<Eigen::Array2d, Eigen::aligned_allocator<Eigen::Array2d>> src_contour = getSparseContour(camera_info, 9);
+    
+    // std::cout << "R" << std::endl;
+    // for(int i=0;i<10;++i){
+    //     Eigen::Quaterniond q(Eigen::Map<Eigen::Matrix<float, 3, 3, Eigen::RowMajor>>(&(*R)[i * 9], 3, 3).cast<double>());
+    //     Eigen::Vector3d vec = Quaternion2Vector(q) * ratio;
+    //     Eigen::Quaterniond q2 = Vector2Quaternion<double>(vec );
+        
+    //     std::cout << q2.coeffs().transpose() << std::endl;
+    // }
+
+    // std::cout << "src" << std::endl;
+    // for(auto el:src_contour){
+    //     std::cout << el.transpose() << std::endl;
+    // }
     // Eigen::MatrixXd R;
     Eigen::Array2d x1;
     Eigen::Vector3d x3, xyz;
@@ -139,7 +156,7 @@ void getUndistortUnrollingContour(
     {
         // double time_in_row = time + line_delay * (p[1] - camera_info->height_ * 0.5);
         // double frame_in_row = frame + (line_delay * (p[1] - camera_info->height_ * 0.5))
-        //     * video_param->getFrequency();
+        //     * video_param->getFrequency();   
 
         // R = angular_velocity->getCorrectionQuaternionFromFrame(frame_in_row, filter_coeffs,sync_table).matrix();
         // std::cout << "R:\r\n" << R << std::endl;
@@ -156,7 +173,13 @@ void getUndistortUnrollingContour(
             x2 = x1;
         }
         x3 << x2[0], x2[1], 1.0;
-        xyz = Eigen::Map<Eigen::Matrix<float, 3, 3, Eigen::RowMajor>>(&(*R)[p[1] * 9], 3, 3).cast<double>() * x3; // Use rotation matrix of each row.
+        Eigen::Quaterniond q(Eigen::Map<Eigen::Matrix<float, 3, 3, Eigen::RowMajor>>(&(*R)[std::round(p[1]) * 9], 3, 3).cast<double>());
+        Eigen::Vector3d vec = Quaternion2Vector(q) * ratio;
+        Eigen::Quaterniond q2 = Vector2Quaternion<double>(vec );
+        // std::cout << "at:" << p[1] << 
+        // "Mat:" << Eigen::Map<Eigen::Matrix<float, 3, 3, Eigen::RowMajor>>(&(*R)[(int)p[1] * 9], 3, 3) <<
+        // "q:" << q.coeffs().transpose() << "vec:" << vec.transpose() <<  " q2:" << q2.coeffs().transpose() << std::endl;
+        xyz = q2.normalized().toRotationMatrix() * x3; // Use rotation matrix of each row.
         x2 << xyz[0] / xyz[2], xyz[1] / xyz[2];
         contour.push_back(x2 * f * zoom + c);
     }
@@ -166,35 +189,65 @@ void getUndistortUnrollingContour(
     // }
 }
 
-bool hasBlackSpace(double zoom,
-                   MatrixPtr R,
-                   CameraInformationPtr camera_info)
-{
-    std::vector<Eigen::Array2d, Eigen::aligned_allocator<Eigen::Array2d>> contour;
-    getUndistortUnrollingContour(R, contour, zoom, camera_info);
-    return !isGoodWarp(contour,camera_info);
-}
+// bool hasBlackSpace(double zoom,
+//                    MatrixPtr R,
+//                    CameraInformationPtr camera_info)
+// {
+//     std::vector<Eigen::Array2d, Eigen::aligned_allocator<Eigen::Array2d>> contour;
+//     getUndistortUnrollingContour(R, contour, zoom, camera_info);
+//     return !isGoodWarp(contour,camera_info);
+// }
 
-uint32_t bisectionMethod(int frame,
-                         double zoom,
+
+
+double bisectionMethod(double zoom,
                          MatrixPtr R,
                          CameraInformationPtr camera_info,
-                         int32_t minimum_filter_strength,
-                         int32_t maximum_filter_strength,
-                         int max_iteration, uint32_t eps)
+                         double min,
+                         double max,
+                         int max_iteration, double eps)
 {
-    int32_t a = maximum_filter_strength;
-    int32_t b = minimum_filter_strength;
+    std::vector<Eigen::Array2d, Eigen::aligned_allocator<Eigen::Array2d>> contour_a,contour_m;
+    getUndistortUnrollingContour(1.0,R,contour_a,zoom,camera_info);
+// std::cout << "A0:" << std::endl;
+//         for(auto el:contour_a)
+//         {
+//             std::cout << el.transpose() << std::endl;
+//         }
+
+    if(isGoodWarp(contour_a,camera_info))
+    {
+        return 1.0;
+    }
+
+    double a = min;
+    double b = max;
     int count = 0;
-    int32_t m = 0;
-    while (((uint32_t)abs(a - b) > eps) && (count++ < max_iteration))
+    double m = 0;
+    while ((fabs(a - b) > eps) && (count++ < max_iteration))
     {
         m = (a + b) * 0.5;
         // TODO:
         // 1. ここでスパースな輪郭を生成
+        
+        getUndistortUnrollingContour(a,R,contour_a,zoom,camera_info);
+        getUndistortUnrollingContour(m,R,contour_m,zoom,camera_info);
         // 2. 二分法で計算する補正量を制限するパラメータを受け取り、補正後のスパースな輪郭を計算
         // 3. スパースな輪郭をhasBlackSpaceに渡して評価
-        if (hasBlackSpace(zoom, R, camera_info) ^ hasBlackSpace(zoom, R, camera_info))
+
+// std::cout << "A:" << std::endl;
+//         for(auto el:contour_a)
+//         {
+//             std::cout << el.transpose() << std::endl;
+//         }
+
+// std::cout << "M:" << std::endl;
+//         for(auto el:contour_m)
+//         {
+//             std::cout << el.transpose() << std::endl;
+//         }
+
+        if (isGoodWarp(contour_a,camera_info) ^ isGoodWarp(contour_m,camera_info))
         {
             b = m;
         }

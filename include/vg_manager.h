@@ -15,6 +15,7 @@
 #include "param.h"
 #include "camera_information.h"
 #include "cl_manager.h"
+#include "SO3Filters.h"
 
 
 
@@ -48,7 +49,7 @@ private:
     ros::Publisher raw_quaternion_pub,filtered_quaternion_pub,
     raw_quaternion_queue_size_pub,filtered_quaternion_queue_size_pub;  
     Eigen::Vector3d last_vector;
-
+    MatrixPtr getR(double ratio=1.0);
     ros::Time get_begin_time(ros::Time time);
     ros::Time get_end_time(ros::Time time);
 
