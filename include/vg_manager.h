@@ -41,6 +41,7 @@ private:
     ros::NodeHandle pnh_;
     image_transport::ImageTransport image_transport_;
     image_transport::CameraSubscriber camera_subscriber_;
+    image_transport::CameraPublisher camera_publisher_;
     ros::Subscriber imu_subscriber_;
     image_transport::Publisher pub_ ;
     Eigen::Quaterniond q,q_filtered;
@@ -60,6 +61,7 @@ private:
 
     Parameters param; 
     CameraInformationPtr camera_info_;
+    sensor_msgs::CameraInfoConstPtr camera_info_ros;
 
     // Image processing parameters
     float zoom_;
