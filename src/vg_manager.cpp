@@ -6,7 +6,7 @@ namespace virtualgimbal
 
 manager::manager() : pnh_("~"), image_transport_(pnh_), q(1.0, 0, 0, 0), q_filtered(1.0, 0, 0, 0),
  last_vector(0, 0, 0), param(pnh_), publish_statistics(true),
- zoom_(1.3f),enable_black_space_removal_(true),cutoff_frequency_(0.5)
+ zoom_(1.3f),enable_black_space_removal_(true),cutoff_frequency_(0.5),enable_trimming_(false)
 {
     std::string image = "/image";
     std::string imu_data = "/imu_data";
@@ -23,6 +23,7 @@ manager::manager() : pnh_("~"), image_transport_(pnh_), q(1.0, 0, 0, 0), q_filte
     }
     pnh_.param("enable_black_space_removal",enable_black_space_removal_,enable_black_space_removal_);
     pnh_.param("cutoff_frequency",cutoff_frequency_,cutoff_frequency_);
+    pnh_.param("enable_trimming",enable_trimming_,enable_trimming_);
 
     camera_subscriber_ = image_transport_.subscribeCamera(image, 100, &manager::callback, this);
     imu_subscriber_ = pnh_.subscribe(imu_data, 10000, &manager::imu_callback, this);
@@ -107,16 +108,16 @@ MatrixPtr manager::getR(double ratio){
     return R;
 }
 
-void manager::callback(const sensor_msgs::ImageConstPtr &image, const sensor_msgs::CameraInfoConstPtr &camera_info)
+void manager::callback(const sensor_msgs::ImageConstPtr &image, const sensor_msgs::CameraInfoConstPtr &ros_camera_info)
 {
     if (!camera_info_)
     {
-        camera_info_ = std::make_shared<CameraInformation>(std::string("ros_camera"), camera_info->distortion_model, Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0),
-                                                           camera_info->width, camera_info->height, camera_info->P[0],
-                                                           camera_info->P[5], camera_info->P[2], camera_info->P[6],
-                                                           camera_info->D[0], camera_info->D[1], camera_info->D[2],
-                                                           camera_info->D[3], 0.0);
-        camera_info_ros = camera_info;
+        camera_info_ = std::make_shared<CameraInformation>(std::string("ros_camera"), ros_camera_info->distortion_model, Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0),
+                                                           ros_camera_info->width, ros_camera_info->height, ros_camera_info->P[0],
+                                                           ros_camera_info->P[5], ros_camera_info->P[2], ros_camera_info->P[6],
+                                                           ros_camera_info->D[0], ros_camera_info->D[1], ros_camera_info->D[2],
+                                                           ros_camera_info->D[3], 0.0);
+        ros_camera_info_ = ros_camera_info;
     }
 
     if (image_previous)
@@ -420,12 +421,23 @@ void manager::run()
 
             // cv::imshow("received image", src_image.front().second);
             src_image.pop_front();
-            cv::imshow("Stabilized image", *umat_dst_ptr);
+            // cv::imshow("Stabilized image", *umat_dst_ptr);
 
 
-            sensor_msgs::ImagePtr msg = cv_bridge::CvImage(camera_info_ros->header,"bgra8",umat_dst_ptr->getMat(cv::ACCESS_READ)).toImageMsg();
-            sensor_msgs::CameraInfo info = *camera_info_ros;
+            sensor_msgs::ImagePtr msg = cv_bridge::CvImage(ros_camera_info_->header,"bgra8",umat_dst_ptr->getMat(cv::ACCESS_READ)).toImageMsg();
+            sensor_msgs::CameraInfo info = *ros_camera_info_;
             info.header.stamp = time;
+            if(enable_trimming_)
+            {
+
+            }
+            else
+            {
+                info.K[0] *= zoom_; // fx
+                info.K[4] *= zoom_; // fy
+                info.P[0] *= zoom_; // fx
+                info.P[5] *= zoom_; // fy
+            }
             camera_publisher_.publish(*msg,info);
         }
 

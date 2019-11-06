@@ -33,7 +33,7 @@ class manager
 public:
     manager();
     ~manager();
-    void callback(const sensor_msgs::ImageConstPtr& image, const sensor_msgs::CameraInfoConstPtr& camera_info);
+    void callback(const sensor_msgs::ImageConstPtr& image, const sensor_msgs::CameraInfoConstPtr& ros_camera_info);
     void imu_callback(const sensor_msgs::Imu::ConstPtr &msg);
     void run();
 private:
@@ -61,13 +61,14 @@ private:
 
     Parameters param; 
     CameraInformationPtr camera_info_;
-    sensor_msgs::CameraInfoConstPtr camera_info_ros;
+    sensor_msgs::CameraInfoConstPtr ros_camera_info_;
 
     // Image processing parameters
     float zoom_;
     bool enable_black_space_removal_;
     float cutoff_frequency_;
     float a1_;
+    bool enable_trimming_;
 
     // Prepare OpenCL
     cv::ocl::Context context;
