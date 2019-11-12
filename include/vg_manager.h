@@ -61,6 +61,7 @@ private:
 
     Parameters param; 
     CameraInformationPtr camera_info_;
+    CameraInformationPtr dst_camera_info_;
     sensor_msgs::CameraInfoConstPtr ros_camera_info_;
 
     // Image processing parameters

@@ -4,9 +4,9 @@
 namespace virtualgimbal
 {
 
-manager::manager() : pnh_("~"), image_transport_(pnh_), q(1.0, 0, 0, 0), q_filtered(1.0, 0, 0, 0),
+manager::manager() : pnh_("~"), image_transport_(nh_), q(1.0, 0, 0, 0), q_filtered(1.0, 0, 0, 0),
  last_vector(0, 0, 0), param(pnh_), publish_statistics(true),
- zoom_(1.3f),enable_black_space_removal_(true),cutoff_frequency_(0.5),enable_trimming_(false)
+ zoom_(1.3f),enable_black_space_removal_(true),cutoff_frequency_(0.5),enable_trimming_(true)
 {
     std::string image = "/image";
     std::string imu_data = "/imu_data";
@@ -335,28 +335,6 @@ void manager::run()
             double ratio = bisectionMethod(zoom_,R,camera_info_,0.0,1.0,1000,0.001);
             ROS_INFO("ratio:%f",ratio);
             R = getR(ratio);
-            // for (int row = 0, e = camera_info_->height_; row < e; ++row)
-            // {
-            //     int status = raw_angle_quaternion.get(src_image.front().first + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)), raw);
-
-            //     if (DequeStatus::GOOD != status)
-            //     {
-            //         // ROS_INFO("Raw Status:%d, size:%ld", status, raw_angle_quaternion.size());
-            //         // ROS_INFO("Filtered Status:%d, size:%ld", status, filtered_angle_quaternion.size());
-            //         // std::cout << "raw_angle_quaternion: Timing error" << std::endl;
-            //     }
-            //     // status = filtered_angle_quaternion.get(time_in_row,filtered);
-            //     status = filtered_angle_quaternion.get(src_image.front().first + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)), filtered);
-
-            //     if (DequeStatus::GOOD != status)
-            //     {
-            //         // ROS_INFO("Raw Status:%d, size:%ld", status, raw_angle_quaternion.size());
-            //         // ROS_INFO("Filtered Status:%d, size:%ld", status, filtered_angle_quaternion.size());
-            //         // std::cout << "filtered_angle_quaternion: Timing error" << std::endl;
-            //     }
-            //     Eigen::Map<Eigen::Matrix<float, 3, 3, Eigen::RowMajor>>(&(*R)[row * 9], 3, 3) =
-            //         (raw * filtered.conjugate()).matrix().cast<float>(); //順序合ってる？
-            // }
 
             if (0)
             {
@@ -400,15 +378,46 @@ void manager::run()
             auto time = src_image.front().first;
             auto &image = src_image.front().second;
 
+            // Define destinatino image 
+            int image_width_dst,image_height_dst;
+            float fx_dst,fy_dst,cx_dst,cy_dst,line_delay_dst;
+            if(enable_trimming_)
+            {
+                image_width_dst = image.cols / zoom_;
+                image_height_dst = image.rows / zoom_;
+                fx_dst = fx;
+                fy_dst = fy;
+                cx_dst = cx - (image.cols - image_width_dst)*0.5;
+                cy_dst = cy - (image.rows - image_height_dst)*0.5;
+                line_delay_dst = camera_info_->line_delay_;
+            }
+            else
+            {
+                image_width_dst = image.cols;
+                image_height_dst = image.rows;
+                fx_dst = fx*zoom_;
+                fy_dst = fy*zoom_;
+                cx_dst = cx;
+                cy_dst = cy;
+                line_delay_dst = camera_info_->line_delay_/zoom_;
+
+            }
+            if(!dst_camera_info_)
+            {
+                dst_camera_info_ = std::make_shared<CameraInformation>("dst_camera","dst_lens",Eigen::Quaterniond(1.0,0.,0.,0.),image_width_dst,image_height_dst,
+                fx_dst,fy_dst,cx_dst ,cy_dst,0.,0.,0.,0.,line_delay_dst);
+            }
+            UMatPtr umat_dst_ptr(new cv::UMat(cv::Size(image_width_dst,image_height_dst), CV_8UC4, cv::ACCESS_WRITE, cv::USAGE_ALLOCATE_DEVICE_MEMORY));
+            cv::ocl::Image2D image_dst(*umat_dst_ptr, false, true);
+           
             // Send arguments to kernel
             cv::ocl::Image2D image_src(image);
-            UMatPtr umat_dst_ptr(new cv::UMat(image.size(), CV_8UC4, cv::ACCESS_WRITE, cv::USAGE_ALLOCATE_DEVICE_MEMORY));
-            cv::ocl::Image2D image_dst(*umat_dst_ptr, false, true);
+
             cv::Mat mat_R = cv::Mat(R->size(), 1, CV_32F, R->data());
             cv::UMat umat_R = mat_R.getUMat(cv::ACCESS_READ, cv::USAGE_ALLOCATE_DEVICE_MEMORY);
             cv::ocl::Kernel kernel;
             getKernel(kernel_name, kernel_function, kernel, context, build_opt);
-            kernel.args(image_src, image_dst, cv::ocl::KernelArg::ReadOnlyNoSize(umat_R),zoom_,ik1,ik2,ip1,ip2,fx,fy,cx,cy);
+            kernel.args(image_src, image_dst, cv::ocl::KernelArg::ReadOnlyNoSize(umat_R),ik1,ik2,ip1,ip2,fx,fy,cx,cy,fx_dst,fy_dst,cx_dst,cy_dst);
             size_t globalThreads[3] = {(size_t)image.cols, (size_t)image.rows, 1};
             //size_t localThreads[3] = { 16, 16, 1 };
             bool success = kernel.run(3, globalThreads, NULL, true);
