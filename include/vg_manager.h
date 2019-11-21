@@ -33,10 +33,11 @@ class manager
 public:
     manager();
     ~manager();
-    void callback(const sensor_msgs::ImageConstPtr& image, const sensor_msgs::CameraInfoConstPtr& ros_camera_info);
-    void imu_callback(const sensor_msgs::Imu::ConstPtr &msg);
     void run();
 private:
+    void callback(const sensor_msgs::ImageConstPtr& image, const sensor_msgs::CameraInfoConstPtr& ros_camera_info);
+    void imu_callback(const sensor_msgs::Imu::ConstPtr &msg);
+
     ros::NodeHandle nh_;
     ros::NodeHandle pnh_;
     image_transport::ImageTransport image_transport_;
