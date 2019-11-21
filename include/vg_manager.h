@@ -47,7 +47,7 @@ private:
     Eigen::Quaterniond q,q_filtered;
     sensor_msgs::Imu::ConstPtr imu_previous = nullptr;
     sensor_msgs::ImageConstPtr image_previous = nullptr;
-    ros::Publisher raw_quaternion_pub,filtered_quaternion_pub,
+    ros::Publisher raw_quaternion_pub,filtered_quaternion_pub,estimated_angular_velocity_pub,measured_augular_velocity_pub,
     raw_quaternion_queue_size_pub,filtered_quaternion_queue_size_pub;  
     Eigen::Vector3d last_vector;
     MatrixPtr getR(double ratio=1.0);
@@ -70,6 +70,7 @@ private:
     float cutoff_frequency_;
     float a1_;
     bool enable_trimming_;
+    double offset_time_;
 
     // Prepare OpenCL
     cv::ocl::Context context;

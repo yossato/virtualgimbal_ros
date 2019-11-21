@@ -6,7 +6,7 @@ namespace virtualgimbal
 
 manager::manager() : pnh_("~"), image_transport_(nh_), q(1.0, 0, 0, 0), q_filtered(1.0, 0, 0, 0),
  last_vector(0, 0, 0), param(pnh_), publish_statistics(true),
- zoom_(1.3f),enable_black_space_removal_(true),cutoff_frequency_(0.5),enable_trimming_(true)
+ zoom_(1.3f),enable_black_space_removal_(true),cutoff_frequency_(0.5),enable_trimming_(true),offset_time_(0.0)
 {
     std::string image = "/image";
     std::string imu_data = "/imu_data";
@@ -24,6 +24,7 @@ manager::manager() : pnh_("~"), image_transport_(nh_), q(1.0, 0, 0, 0), q_filter
     pnh_.param("enable_black_space_removal",enable_black_space_removal_,enable_black_space_removal_);
     pnh_.param("cutoff_frequency",cutoff_frequency_,cutoff_frequency_);
     pnh_.param("enable_trimming",enable_trimming_,enable_trimming_);
+    pnh_.param("offset_time",offset_time_,offset_time_);
 
     camera_subscriber_ = image_transport_.subscribeCamera(image, 100, &manager::callback, this);
     imu_subscriber_ = pnh_.subscribe(imu_data, 10000, &manager::imu_callback, this);
@@ -31,8 +32,10 @@ manager::manager() : pnh_("~"), image_transport_(nh_), q(1.0, 0, 0, 0), q_filter
 
     camera_publisher_ = image_transport_.advertiseCamera("camera/stabilized/image_rect",1);
 
-    raw_quaternion_pub = pnh_.advertise<sensor_msgs::Imu>("angle/raw", 1000);
-    filtered_quaternion_pub = pnh_.advertise<sensor_msgs::Imu>("angle/filtered", 1000);
+    raw_quaternion_pub              = pnh_.advertise<sensor_msgs::Imu>("angle/raw", 1000);
+    filtered_quaternion_pub         = pnh_.advertise<sensor_msgs::Imu>("angle/filtered", 1000);
+    estimated_angular_velocity_pub  = pnh_.advertise<sensor_msgs::Imu>("angular_velocity/estimate",1000);
+    measured_augular_velocity_pub   = pnh_.advertise<sensor_msgs::Imu>("angular_velocity/measured",1000);
 
     raw_quaternion_queue_size_pub = pnh_.advertise<std_msgs::Float64>("raw_quaternion_queue_size", 10);
     filtered_quaternion_queue_size_pub = pnh_.advertise<std_msgs::Float64>("filtered_quaternion_queue_size", 10);
@@ -58,14 +61,14 @@ MatrixPtr manager::getR(double ratio){
     {
         for (int row = 0, e = camera_info_->height_; row < e; ++row)
         {
-            int status = raw_angle_quaternion.get(src_image.front().first + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)), raw);
+            int status = raw_angle_quaternion.get(src_image.front().first + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)+offset_time_), raw);
 
             if (DequeStatus::GOOD != status)
             {
                 ROS_ERROR("Logic error at %s:%d",__FUNCTION__,__LINE__);
                 throw;
             }
-            status = filtered_angle_quaternion.get(src_image.front().first + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)), filtered);
+            status = filtered_angle_quaternion.get(src_image.front().first + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)+offset_time_), filtered);
 
             if (DequeStatus::GOOD != status)
             {
@@ -80,14 +83,14 @@ MatrixPtr manager::getR(double ratio){
     {
         for (int row = 0, e = camera_info_->height_; row < e; ++row)
         {
-            int status = raw_angle_quaternion.get(src_image.front().first + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)), raw);
+            int status = raw_angle_quaternion.get(src_image.front().first + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)+offset_time_), raw);
 
             if (DequeStatus::GOOD != status)
             {
                 ROS_ERROR("Logic error at %s:%d",__FUNCTION__,__LINE__);
                 throw;
             }
-            status = filtered_angle_quaternion.get(src_image.front().first + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)), filtered);
+            status = filtered_angle_quaternion.get(src_image.front().first + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)+offset_time_), filtered);
 
             if (DequeStatus::GOOD != status)
             {
@@ -112,11 +115,13 @@ void manager::callback(const sensor_msgs::ImageConstPtr &image, const sensor_msg
 {
     if (!camera_info_)
     {
+        double line_delay;
+        pnh_.param("line_delay",line_delay,0.0);
         camera_info_ = std::make_shared<CameraInformation>(std::string("ros_camera"), ros_camera_info->distortion_model, Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0),
                                                            ros_camera_info->width, ros_camera_info->height, ros_camera_info->P[0],
                                                            ros_camera_info->P[5], ros_camera_info->P[2], ros_camera_info->P[6],
                                                            ros_camera_info->D[0], ros_camera_info->D[1], ros_camera_info->D[2],
-                                                           ros_camera_info->D[3], 0.0);
+                                                           ros_camera_info->D[3], line_delay);
         ros_camera_info_ = ros_camera_info;
     }
 
@@ -218,21 +223,6 @@ void manager::imu_callback(const sensor_msgs::Imu::ConstPtr &msg)
         raw_angle_quaternion.push_back(msg->header.stamp, q);
         filtered_angle_quaternion.push_back(msg->header.stamp, q_filtered);
 
-        // if ((ros::Time::now() - ros::Time(0.0)) > ros::Duration(3.0))
-        // {
-        // if(1)
-        // {
-        //     ros::Duration d = (ros::Time::now() - ros::Time(0.0));
-        //     ROS_INFO("Duration:%d.%d",d.sec,d.nsec);
-        // }
-        // raw_angle_quaternion.pop_front(msg->header.stamp - ros::Duration(3.0));
-        // filtered_angle_quaternion.pop_front(msg->header.stamp - ros::Duration(3.0));
-        // }
-
-        // raw_angle_quaternion.limit_data_length(1000);
-        // filtered_angle_quaternion.limit_data_length(1000);
-
-        // ROS_INFO("Size of raw_angle_quaternion:%lu", raw_angle_quaternion.size());
     }
     imu_previous = msg;
 }
@@ -332,7 +322,7 @@ void manager::run()
 
             // Calculate Rotation matrix for each line
             R = getR();
-            double ratio = bisectionMethod(zoom_,R,camera_info_,0.0,1.0,1000,0.001);
+            double ratio = bisectionMethod(zoom_,R,camera_info_,0.0,1.0,1000,0.001);//TODO:zoomをなくす
             ROS_INFO("ratio:%f",ratio);
             R = getR(ratio);
 
@@ -356,13 +346,13 @@ void manager::run()
             // Pop old angle quaternions
             if (camera_info_->line_delay_ >= 0)
             {
-                raw_angle_quaternion.pop_old(src_image.front().first + ros::Duration(camera_info_->line_delay_ * ((camera_info_->height_ - 1) - camera_info_->height_ * 0.5)));
-                filtered_angle_quaternion.pop_old(src_image.front().first + ros::Duration(camera_info_->line_delay_ * ((camera_info_->height_ - 1) - camera_info_->height_ * 0.5)));
+                raw_angle_quaternion.pop_old(src_image.front().first + ros::Duration(camera_info_->line_delay_ * ((camera_info_->height_ - 1) - camera_info_->height_ * 0.5)+offset_time_));
+                filtered_angle_quaternion.pop_old(src_image.front().first + ros::Duration(camera_info_->line_delay_ * ((camera_info_->height_ - 1) - camera_info_->height_ * 0.5)+offset_time_));
             }
             else
             {
-                raw_angle_quaternion.pop_old(src_image.front().first + ros::Duration(camera_info_->line_delay_ * (0 - camera_info_->height_ * 0.5)));
-                filtered_angle_quaternion.pop_old(src_image.front().first + ros::Duration(camera_info_->line_delay_ * (0 - camera_info_->height_ * 0.5)));
+                raw_angle_quaternion.pop_old(src_image.front().first + ros::Duration(camera_info_->line_delay_ * (0 - camera_info_->height_ * 0.5)+offset_time_));
+                filtered_angle_quaternion.pop_old(src_image.front().first + ros::Duration(camera_info_->line_delay_ * (0 - camera_info_->height_ * 0.5)+offset_time_));
             }
 
             float ik1 = camera_info_->inverse_k1_;
@@ -448,6 +438,24 @@ void manager::run()
                 info.P[5] *= zoom_; // fy
             }
             camera_publisher_.publish(*msg,info);
+
+
+            // Show debug information
+            // if (publish_statistics)
+            // {
+            //     // 画像のタイムスタンプを保存->次の周期に活かす
+            //     // 画像も保存
+            //     // IMUから新旧のタイムスタンプの中間の角速度を取得
+            //     // 新旧画像から角速度を推定
+
+            //     sensor_msgs::Imu measured, estimated;
+
+            //     measured.header = ros_camera_info_->header;
+            //     measured.header.stamp = imu_previous->header.stamp + (msg->header.stamp - imu_previous->header.stamp)*0.5;
+            //     measured_augular_velocity_pub.publish(measured);
+
+            //     estimated_angular_velocity_pub.publish(estimated);
+            // }
         }
 
         char key = cv::waitKey(1);
