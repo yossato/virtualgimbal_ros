@@ -30,9 +30,9 @@
 *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *************************************************************************/
 #include "angular_velocity_estimator.h"
-int estimate_angular_velocity(cv::Mat &cur, cv::Mat &prev, Eigen::MatrixXd &optical_flow)
+int estimate_angular_velocity(const cv::Mat &cur, const cv::Mat &prev, Eigen::Vector3d &optical_flow)
 {
-    optical_flow = Eigen::MatrixXd::Zero(1, 3);
+    // optical_flow = Eigen::Vector3d::Zero(1, 3);
 
     cv::Mat cur_grey;
     cv::Mat prev_grey;
@@ -59,7 +59,7 @@ int estimate_angular_velocity(cv::Mat &cur, cv::Mat &prev, Eigen::MatrixXd &opti
 
     // Step 1 - Get previous to current frame transformation (dx, dy, da) for all frames
 
-    if (prev.type() == CV_8UC3) // TODO:もしもモノクロ画像やデプス画像だった時の対応が必要！！！！！！！！！
+    if (prev.type() == CV_8UC3) 
     {
         cv::cvtColor(cur, cur_grey, cv::COLOR_BGR2GRAY);
     }else

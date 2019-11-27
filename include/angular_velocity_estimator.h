@@ -40,5 +40,5 @@
 #ifndef __ANGULAR_VELOCITY_ESTIMATOR_H__
 #define __ANGULAR_VELOCITY_ESTIMATOR_H__
 
-int estimate_angular_velocity(cv::Mat &cur, cv::Mat &prev, Eigen::MatrixXd &optical_flow);
+int estimate_angular_velocity(const cv::Mat &cur, const cv::Mat &prev, Eigen::Vector3d &optical_flow);
 #endif //__ANGULAR_VELOCITY_ESTIMATOR_H__

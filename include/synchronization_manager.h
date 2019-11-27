@@ -9,9 +9,13 @@
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/opencv.hpp>
 #include <image_transport/image_transport.h>
-
+#include "angular_velocity_estimator.h"
+#include "rotation.h"
 namespace virtualgimbal
 {
+
+using AngularVelocity = StampedDeque<Eigen::Vector3d>;
+
 class synchronization_manager
 {
 public:
@@ -25,6 +29,10 @@ private:
     image_transport::ImageTransport image_transport_;
     image_transport::CameraSubscriber camera_subscriber_;
     ros::Subscriber imu_subscriber_;
+    sensor_msgs::ImageConstPtr previous_image_;
+
+    AngularVelocity estimated_angular_velocity_;
+    AngularVelocity measured_angular_velocity_;
 };
 } // namespace virtualgimbal
 
