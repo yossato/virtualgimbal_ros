@@ -33,6 +33,8 @@ private:
 
     AngularVelocity estimated_angular_velocity_;
     AngularVelocity measured_angular_velocity_;
+
+    ros::Publisher estimated_angular_velocity_pub_, measured_angular_velocity_pub_;
 };
 } // namespace virtualgimbal
 

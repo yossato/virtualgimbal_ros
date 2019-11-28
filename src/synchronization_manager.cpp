@@ -15,6 +15,9 @@ synchronization_manager::synchronization_manager() : pnh_("~"), image_transport_
 
     camera_subscriber_ = image_transport_.subscribeCamera(image, 100, &synchronization_manager::callback, this);
     imu_subscriber_ = pnh_.subscribe(imu_data, 10000, &synchronization_manager::imu_callback, this);
+
+    estimated_angular_velocity_pub_ = pnh_.advertise<geometry_msgs::Vector3>("estimated_angular_velocity",1000);
+    measured_angular_velocity_pub_  = pnh_.advertise<geometry_msgs::Vector3>("measured_angular_velocity",1000);
     
 }
 
@@ -22,34 +25,39 @@ void synchronization_manager::callback(const sensor_msgs::ImageConstPtr &image, 
 {
     if(previous_image_)
     {
-        
         Eigen::Vector3d optical_flow;
         // Get optical flow
-        if(estimate_angular_velocity(cv_bridge::toCvShare(image)->image,cv_bridge::toCvShare(previous_image_)->image,optical_flow))
+        if(0 == estimate_angular_velocity(cv_bridge::toCvShare(image)->image,cv_bridge::toCvShare(previous_image_)->image,optical_flow))
         {
             // Convert optical flow to angular velocity
+            Eigen::Vector3d angular_velocity;
+            const double &fx = ros_camera_info->K[0];
+            const double &fy = ros_camera_info->K[4];
+            double period = (image->header.stamp - previous_image_->header.stamp).toSec();
+            angular_velocity << atan(optical_flow[0] / fx)/period, -atan(optical_flow[1] / fy)/period, - optical_flow[2]/period;
+            // Save angular velocity with average time stamp between two images.
             estimated_angular_velocity_.push_back(
                 previous_image_->header.stamp + (image->header.stamp - previous_image_->header.stamp) * 0.5,
-                optical_flow
+                angular_velocity
             );
+
+            geometry_msgs::Vector3 msg;
+            msg.x = angular_velocity[0];
+            msg.y = angular_velocity[1];
+            msg.z = angular_velocity[2];
+            estimated_angular_velocity_pub_.publish(msg);
         }
         // cv_bridge::toCvShare(image)->image
     }
-    else
-    {
-        previous_image_ = image;
-    }
-    
-    
-    // 画像を受け取り、前回の画像との差分から角速度を計算
-    // 画像から推定した角速度を、time stampとともにdequeに保存
-    // time stampは2枚の画像のタイムスタンプの平均値にする
-    // 今回の画像を保存
+    previous_image_ = image;
 }
 
 void synchronization_manager::imu_callback(const sensor_msgs::Imu::ConstPtr &msg)
 {
     // とにかくIMUのdequeに保存
+    Eigen::Vector3d angular_velocity;
+    angular_velocity << msg->angular_velocity.x, msg->angular_velocity.y, msg->angular_velocity.z;
+    measured_angular_velocity_.push_back(msg->header.stamp,angular_velocity);
 }
 
 double synchronization_manager::estimate_offset_time()
