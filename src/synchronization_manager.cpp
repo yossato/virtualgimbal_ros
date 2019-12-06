@@ -14,10 +14,10 @@ synchronization_manager::synchronization_manager() : pnh_("~"), image_transport_
     ROS_INFO("imu_data topic is %s", imu_data.c_str());
 
     camera_subscriber_ = image_transport_.subscribeCamera(image, 100, &synchronization_manager::callback, this);
-    imu_subscriber_ = pnh_.subscribe(imu_data, 10000, &synchronization_manager::imu_callback, this);
+    imu_subscriber_ = pnh_.subscribe(imu_data, 100, &synchronization_manager::imu_callback, this);
 
-    estimated_angular_velocity_pub_ = pnh_.advertise<geometry_msgs::Vector3>("estimated_angular_velocity",1000);
-    measured_angular_velocity_pub_  = pnh_.advertise<geometry_msgs::Vector3>("measured_angular_velocity",1000);
+    estimated_angular_velocity_pub_ = pnh_.advertise<geometry_msgs::Vector3>("estimated_angular_velocity",100);
+    measured_angular_velocity_pub_  = pnh_.advertise<geometry_msgs::Vector3>("measured_angular_velocity",100);
     
 }
 
@@ -34,7 +34,7 @@ void synchronization_manager::callback(const sensor_msgs::ImageConstPtr &image, 
             const double &fx = ros_camera_info->K[0];
             const double &fy = ros_camera_info->K[4];
             double period = (image->header.stamp - previous_image_->header.stamp).toSec();
-            angular_velocity << atan(optical_flow[0] / fx)/period, -atan(optical_flow[1] / fy)/period, - optical_flow[2]/period;
+            angular_velocity << atan(optical_flow[1] / fy)/period, -atan(optical_flow[0] / fx)/period, - optical_flow[2]/period;
             // Save angular velocity with average time stamp between two images.
             estimated_angular_velocity_.push_back(
                 previous_image_->header.stamp + (image->header.stamp - previous_image_->header.stamp) * 0.5,
@@ -58,13 +58,31 @@ void synchronization_manager::imu_callback(const sensor_msgs::Imu::ConstPtr &msg
     Eigen::Vector3d angular_velocity;
     angular_velocity << msg->angular_velocity.x, msg->angular_velocity.y, msg->angular_velocity.z;
     measured_angular_velocity_.push_back(msg->header.stamp,angular_velocity);
+    geometry_msgs::Vector3 dst_msg;
+    dst_msg.x = angular_velocity[0];
+    dst_msg.y = angular_velocity[1];
+    dst_msg.z = angular_velocity[2];
+    measured_angular_velocity_pub_.publish(dst_msg);
 }
 
 double synchronization_manager::estimate_offset_time()
 {
     // ROSのspinを続ける
-    // 推定角速度と、IMUデータが十分な数貯まるまで待つ
-    // データが十分に溜まったら、
+    ros::Rate rate(120);
+    while(ros::ok())
+    {
+        // 推定角速度と、IMUデータが十分な数貯まるまで待つ
+        // データが十分に溜まったら、終了
+        if(estimated_angular_velocity_.size() > 50000)
+        {
+            ROS_INFO("Enought data");
+            break;
+        }
+
+        ros::spinOnce();
+        rate.sleep();
+    }
+    
     return 0.0;
 }
 
