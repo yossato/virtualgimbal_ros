@@ -96,6 +96,47 @@ public:
             }
         }
     };
+
+    void is_available(ros::Time time)
+    {
+        if(data.empty())
+        {
+            return false;
+        }
+        auto it = std::find_if(data.begin(), data.end(), [&](std::pair<ros::Time, T> x) { return time == x.first; });
+        if (data.begin() == it)
+        {
+            return false;
+        }
+        else if (data.end() == it)   // Not found
+        {
+            return false;
+        }
+        else
+        {
+            return true;
+        }
+    }
+
+    T get(ros::Time time)
+    {
+        
+        if(data.empty())
+        {
+            throw;
+        }
+
+        auto it = std::find_if(data.begin(), data.end(), [&](std::pair<ros::Time, T> x) { return time == x.first; });
+        if (data.end() == it)   // Not found
+        {
+            throw;
+        }
+        else
+        {
+            return it->second;
+        }
+    }
+
     int get(ros::Time time, T &q)
     {
         int retval = 0;
@@ -108,6 +149,7 @@ public:
         auto it = std::find_if(data.begin(), data.end(), [&](std::pair<ros::Time, T> x) { return time == x.first; });
         if (data.begin() == it)
         {
+            // TODO: 最初と次の間の時間を指定された時に変な動作する？
             q = data.front().second;
 
             return DequeStatus::TIME_STAMP_IS_EARLIER_THAN_FRONT;

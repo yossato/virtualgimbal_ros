@@ -71,6 +71,58 @@ double synchronization_manager::estimate_offset_time()
     ros::Rate rate(120);
     while(ros::ok())
     {
+        ros::spinOnce();
+        rate.sleep();
+
+        // 1.SADで計算する長さと、時間差について計算可能か調べる
+        // Gyro(Measured)の角速度の先頭のタイムスタンプを取得
+        if(!measured_angular_velocity_.size()) continue;
+        auto measured_front_time = measured_angular_velocity_.front().first;
+        // 画像から取得した角速度をの先頭のタイムスタンプを取得
+        if(!estimated_angular_velocity_.size()) continue;
+        auto estimated_front_time = estimated_angular_velocity_.front().first;
+        
+        // SAD計算区間の始点を求める
+        ros::Time front_time;
+        if((measured_front_time-estimated_front_time).toSec()>=0)
+        {  
+            front_time = measured_front_time;
+        }
+        else
+        {
+            front_time = estimated_front_time;
+        }
+
+        // SAD計算区間の終点を求める
+        ros::Time back_time;
+        auto measured_back_time = measured_angular_velocity_.back().first;
+        auto estimated_back_time = estimated_angular_velocity_.back().first;
+        if((measured_back_time-estimated_back_time).toSec()>=0)
+        {
+            back_time = estimated_back_time;
+        }
+        else
+        {
+            back_time = measured_back_time;
+        }
+        
+        // 十分な長さがあるか調べる
+        if((back_time-front_time).toSec()<(offset_time+sad_time_length)) continue;
+
+        // すべてのオフセットについて
+        double period = 0.033; //とりあえず33msに指定
+        for(double dt = 0.0; dt < offset_time; dt+= 0.0001)
+        {
+            double sum = 0.0;
+            int num = 0;
+            for(ros::Time time = front_time; time<=back_time; time += ros::Duration(period))
+            {
+                sum +=(estimated_angular_velocity_.get(time) - measured_angular_velocity_.get(time)).array().abs().sum();
+                num++;
+            }
+        }
+    
+
         // 推定角速度と、IMUデータが十分な数貯まるまで待つ
         // データが十分に溜まったら、終了
         if(estimated_angular_velocity_.size() > 50000)
@@ -79,8 +131,7 @@ double synchronization_manager::estimate_offset_time()
             break;
         }
 
-        ros::spinOnce();
-        rate.sleep();
+
     }
     
     return 0.0;
