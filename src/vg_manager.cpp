@@ -405,7 +405,7 @@ void manager::run()
                 fx_dst,fy_dst,cx_dst ,cy_dst,0.,0.,0.,0.,line_delay_dst);
             }
             UMatPtr umat_dst_ptr(new cv::UMat(cv::Size(image_width_dst,image_height_dst), CV_8UC4, cv::ACCESS_WRITE, cv::USAGE_ALLOCATE_DEVICE_MEMORY));
-            cv::ocl::Image2D image_dst(*umat_dst_ptr, false, true);
+            // cv::ocl::Image2D image_dst(*umat_dst_ptr, false, true);
            
             // Send arguments to kernel
             cv::ocl::Image2D image_src(image);
@@ -414,7 +414,7 @@ void manager::run()
             cv::UMat umat_R = mat_R.getUMat(cv::ACCESS_READ, cv::USAGE_ALLOCATE_DEVICE_MEMORY);
             cv::ocl::Kernel kernel;
             getKernel(kernel_name, kernel_function, kernel, context, build_opt);
-            kernel.args(image_src, image_dst, cv::ocl::KernelArg::ReadOnlyNoSize(umat_R),ik1,ik2,ip1,ip2,fx,fy,cx,cy,fx_dst,fy_dst,cx_dst,cy_dst);
+            kernel.args(image_src, cv::ocl::KernelArg::WriteOnly(*umat_dst_ptr), cv::ocl::KernelArg::ReadOnlyNoSize(umat_R),ik1,ik2,ip1,ip2,fx,fy,cx,cy,fx_dst,fy_dst,cx_dst,cy_dst);
             size_t globalThreads[3] = {(size_t)image.cols, (size_t)image.rows, 1};
             //size_t localThreads[3] = { 16, 16, 1 };
             bool success = kernel.run(3, globalThreads, NULL, true);

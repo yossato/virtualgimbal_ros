@@ -101,7 +101,10 @@ float2 warp_undistort(
 }
 
 __kernel void stabilizer_function(
-   __read_only image2d_t input, __write_only image2d_t output,
+   __read_only image2d_t input,
+   //  __write_only image2d_t output,
+   __global uchar4 *output,
+   int output_step, int output_offset, int output_rows, int output_cols, 
    __constant float* rotation_matrix,       // Rotation Matrix in each rows.
    int src_step, int src_offset,
    // float zoom_ratio,
@@ -111,7 +114,7 @@ __kernel void stabilizer_function(
 )
 {
    int2 size_src = get_image_dim(input);
-   int2 size_dst = get_image_dim(output);
+   int2 size_dst = (int2)(output_cols,output_rows);//get_image_dim(output);
 
    float2 uv = convert_float2((int2)(get_global_id(0),get_global_id(1)));
    float2 f = (float2)(fx,fy);
@@ -151,7 +154,12 @@ __kernel void stabilizer_function(
             continue;
          }
          uint4 pixel = read_imageui(input, samplerLN, uw_cam);
-         write_imageui(output, uvt, pixel);
+         // write_imageui(output, uvt, pixel);
+         // int output_index = mad24(uvt.y, output_step, mad24(uvt.x, (int)sizeof(uchar4), dst_offset));
+         // __global uchar4 *dstf = (__global uchar4 *)(output + output_index);
+         int output_index = mad24(uvt.y, output_cols, uvt.x);
+         __global uchar4 *p_out = (__global uchar4 *)(output + output_index);
+         *p_out = convert_uchar4(pixel);
       }
    }
 }
