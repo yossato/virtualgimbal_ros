@@ -40,6 +40,7 @@ private:
     ros::Duration offset_time; // How long change time between measured and estimated angular velocity.[sec]
     ros::Duration sad_time_length; // How long time calculate SAD [sec]
     
+    bool auto_sync_;
 };
 } // namespace virtualgimbal
 

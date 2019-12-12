@@ -61,6 +61,10 @@ MatrixPtr manager::getR(double ratio){
     {
         for (int row = 0, e = camera_info_->height_; row < e; ++row)
         {
+            // std::cout << "src_image.front().first:" << src_image.front().first << std::endl;
+            // std::cout << "ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)):" << ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)) << std::endl << std::flush;
+            // std::cout << "src_image.front().first + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)+offset_time_:" << src_image.front().first + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)+offset_time_) << std::endl;
+            // std::cout << " raw_angle_quaternion.front().first:" << raw_angle_quaternion.front().first << std::endl;
             int status = raw_angle_quaternion.get(src_image.front().first + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)+offset_time_), raw);
 
             if (DequeStatus::GOOD != status)
@@ -232,6 +236,8 @@ ros::Time manager::get_begin_time(ros::Time time)
     ros::Time begin_time;
     if (camera_info_->line_delay_ >= 0.0)
     {
+        // std::cout << "time" << time << std::endl;
+        // std::cout << "ros::Duration(camera_info_->line_delay_ * (0 - camera_info_->height_ * 0.5)):" << ros::Duration(camera_info_->line_delay_ * (0 - camera_info_->height_ * 0.5)) << std::endl;
         begin_time = time + ros::Duration(camera_info_->line_delay_ * (0 - camera_info_->height_ * 0.5));
     }
     else
@@ -292,8 +298,8 @@ void manager::run()
             }
 
             // If an image is older than IMU angle time stamp, delete the image since the image is not be able to be synchronized with IMU.
-            while ((DequeStatus::TIME_STAMP_IS_EARLIER_THAN_FRONT == raw_angle_quaternion.get(get_begin_time(src_image.front().first), raw)) ||
-                   (DequeStatus::TIME_STAMP_IS_EARLIER_THAN_FRONT == filtered_angle_quaternion.get(get_begin_time(src_image.front().first), filtered)))
+            while ((DequeStatus::TIME_STAMP_IS_EARLIER_THAN_FRONT == raw_angle_quaternion.get(get_begin_time(src_image.front().first + ros::Duration(offset_time_)), raw)) ||
+                   (DequeStatus::TIME_STAMP_IS_EARLIER_THAN_FRONT == filtered_angle_quaternion.get(get_begin_time(src_image.front().first + ros::Duration(offset_time_)), filtered)))
             {
                 src_image.pop_front();
                 ROS_WARN("Image is discarded, since Image has old time stamp.");
@@ -310,8 +316,8 @@ void manager::run()
             }
 
             // Try to get IMU angle.
-            if ((DequeStatus::TIME_STAMP_IS_LATER_THAN_BACK == raw_angle_quaternion.get(get_end_time(src_image.front().first), raw)) ||
-                (DequeStatus::TIME_STAMP_IS_LATER_THAN_BACK == filtered_angle_quaternion.get(get_end_time(src_image.front().first), filtered)))
+            if ((DequeStatus::TIME_STAMP_IS_LATER_THAN_BACK == raw_angle_quaternion.get(get_end_time(src_image.front().first + ros::Duration(offset_time_)), raw)) ||
+                (DequeStatus::TIME_STAMP_IS_LATER_THAN_BACK == filtered_angle_quaternion.get(get_end_time(src_image.front().first + ros::Duration(offset_time_)), filtered)))
             {
                 // If angles are not available, wait for it.
                 ROS_WARN("Waiting for IMU data.");
@@ -322,9 +328,10 @@ void manager::run()
 
             // Calculate Rotation matrix for each line
             R = getR();
-            double ratio = bisectionMethod(zoom_,R,camera_info_,0.0,1.0,1000,0.001);//TODO:zoomをなくす
-            ROS_INFO("ratio:%f",ratio);
-            R = getR(ratio);
+            // double ratio = bisectionMethod(zoom_,R,camera_info_,0.0,1.0,1000,0.001);//TODO:zoomをなくす
+            // ROS_INFO("ratio:%f",ratio);
+            // std::cout << "ratio:" << ratio << std::endl << std::flush;
+            // R = getR(ratio);
 
             if (0)
             {

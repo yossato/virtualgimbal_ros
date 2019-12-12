@@ -4,7 +4,7 @@ namespace virtualgimbal
 
 
 
-synchronization_manager::synchronization_manager() : pnh_("~"), image_transport_(nh_)
+synchronization_manager::synchronization_manager() : pnh_("~"), image_transport_(nh_), auto_sync_(false)
 {
     std::string image = "/image";
     std::string imu_data = "/imu_data";
@@ -14,6 +14,8 @@ synchronization_manager::synchronization_manager() : pnh_("~"), image_transport_
     double offset_time_double = 0.5;
     pnh_.param("sad_time_diff", offset_time_double, offset_time_double);
     offset_time = ros::Duration(offset_time_double);
+
+    pnh_.param("auto_sync",auto_sync_,auto_sync_);
 
     double sad_time_length_double = 5.0;
     pnh_.param("sad_period",sad_time_length_double,sad_time_length_double);
@@ -76,6 +78,16 @@ void synchronization_manager::imu_callback(const sensor_msgs::Imu::ConstPtr &msg
 
 double synchronization_manager::estimate_offset_time()
 {
+    if(!auto_sync_)
+    {
+        ROS_INFO("Auto sync is disabled");
+        return 0.0;
+    }
+    else
+    {
+        ROS_INFO("Auto sync is enabled.");
+    }
+    
 
     // 推定角速度と、IMUデータが十分な数貯まるまで待つ
     // データが十分に溜まったら、計算
