@@ -127,17 +127,16 @@ double synchronization_manager::estimate_offset_time()
 
         // すべてのオフセットについて
         double min_sad = std::numeric_limits<double>::max();
-        
-        for(ros::Duration dt = -offset_time; dt < offset_time; dt+= ros::Duration(0.0001))
+        ros::Duration period(0.033); //とりあえず33msに指定
+        for(ros::Duration dt = -offset_time; dt < offset_time; dt+= ros::Duration(0.001))
         {
             // すべてのフレームについて
-            ros::Duration period(0.033); //とりあえず33msに指定
+            
             double sum = 0.0;
             int num = 0;
             for(ros::Time time = front_time+offset_time, e = front_time + offset_time + sad_time_length; time<e; time += period)
             {
-                // ↓あやしい
-                sum +=(estimated_angular_velocity_.get(time+offset_time) - measured_angular_velocity_.get(time+dt)).array().abs().sum();
+                sum +=(estimated_angular_velocity_.get(time) - measured_angular_velocity_.get(time+dt)).squaredNorm();
                 num++;
             }
             if(num == 0)
@@ -146,27 +145,20 @@ double synchronization_manager::estimate_offset_time()
                 continue;
             }
 
-            if(sum / num < min_sad)
+            if((sum / num) < min_sad)
             {
                 min_sad = sum/num;
-                min_offset_time = offset_time;
+                min_offset_time = dt;
             }
 
-            ROS_INFO("dt:%f sad:%f",dt.toSec(),sum / num);
+            ROS_INFO("dt:%f sad:%f num:%d",dt.toSec(),sum / num,num);
+            
+            
         }
-    
-
-
-        // if(estimated_angular_velocity_.size() > 50000)
-        // {
-        //     ROS_INFO("Enought data");
-        //     break;
-        // }
-
-
+        return min_offset_time.toSec();
     }
     
-    return min_offset_time.toSec();
+    
 }
 
 } // namespace virtualgimbal
