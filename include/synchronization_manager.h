@@ -37,8 +37,8 @@ private:
     ros::Publisher estimated_angular_velocity_pub_, measured_angular_velocity_pub_;
 
     // Synchronize parameter
-    double offset_time; // How long change time between measured and estimated angular velocity.[sec]
-    double sad_time_length; // How long time calculate SAD [sec]
+    ros::Duration offset_time; // How long change time between measured and estimated angular velocity.[sec]
+    ros::Duration sad_time_length; // How long time calculate SAD [sec]
     
 };
 } // namespace virtualgimbal

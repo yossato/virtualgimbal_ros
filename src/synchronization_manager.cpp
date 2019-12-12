@@ -10,6 +10,15 @@ synchronization_manager::synchronization_manager() : pnh_("~"), image_transport_
     std::string imu_data = "/imu_data";
     pnh_.param("image", image, image);
     pnh_.param("imu_data", imu_data, imu_data);
+    
+    double offset_time_double = 0.5;
+    pnh_.param("sad_time_diff", offset_time_double, offset_time_double);
+    offset_time = ros::Duration(offset_time_double);
+
+    double sad_time_length_double = 5.0;
+    pnh_.param("sad_period",sad_time_length_double,sad_time_length_double);
+    sad_time_length =  ros::Duration(sad_time_length_double);
+
     ROS_INFO("image topic is %s", image.c_str());
     ROS_INFO("imu_data topic is %s", imu_data.c_str());
 
@@ -67,6 +76,13 @@ void synchronization_manager::imu_callback(const sensor_msgs::Imu::ConstPtr &msg
 
 double synchronization_manager::estimate_offset_time()
 {
+
+    // 推定角速度と、IMUデータが十分な数貯まるまで待つ
+    // データが十分に溜まったら、計算
+    ros::Duration min_offset_time;
+    min_offset_time.nsec = std::numeric_limits<int32_t>::max();
+    min_offset_time.sec = std::numeric_limits<int32_t>::max();
+
     // ROSのspinを続ける
     ros::Rate rate(120);
     while(ros::ok())
@@ -107,34 +123,50 @@ double synchronization_manager::estimate_offset_time()
         }
         
         // 十分な長さがあるか調べる
-        if((back_time-front_time).toSec()<(offset_time+sad_time_length)) continue;
+        if(back_time-front_time < (offset_time * 2.0 +sad_time_length)) continue;
 
         // すべてのオフセットについて
-        double period = 0.033; //とりあえず33msに指定
-        for(double dt = 0.0; dt < offset_time; dt+= 0.0001)
+        double min_sad = std::numeric_limits<double>::max();
+        
+        for(ros::Duration dt = -offset_time; dt < offset_time; dt+= ros::Duration(0.0001))
         {
+            // すべてのフレームについて
+            ros::Duration period(0.033); //とりあえず33msに指定
             double sum = 0.0;
             int num = 0;
-            for(ros::Time time = front_time; time<=back_time; time += ros::Duration(period))
+            for(ros::Time time = front_time+offset_time, e = front_time + offset_time + sad_time_length; time<e; time += period)
             {
-                sum +=(estimated_angular_velocity_.get(time) - measured_angular_velocity_.get(time)).array().abs().sum();
+                // ↓あやしい
+                sum +=(estimated_angular_velocity_.get(time+offset_time) - measured_angular_velocity_.get(time+dt)).array().abs().sum();
                 num++;
             }
+            if(num == 0)
+            {
+                ROS_WARN("Logic error @ %s:%d",__FILE__,__LINE__);
+                continue;
+            }
+
+            if(sum / num < min_sad)
+            {
+                min_sad = sum/num;
+                min_offset_time = offset_time;
+            }
+
+            ROS_INFO("dt:%f sad:%f",dt.toSec(),sum / num);
         }
     
 
-        // 推定角速度と、IMUデータが十分な数貯まるまで待つ
-        // データが十分に溜まったら、終了
-        if(estimated_angular_velocity_.size() > 50000)
-        {
-            ROS_INFO("Enought data");
-            break;
-        }
+
+        // if(estimated_angular_velocity_.size() > 50000)
+        // {
+        //     ROS_INFO("Enought data");
+        //     break;
+        // }
 
 
     }
     
-    return 0.0;
+    return min_offset_time.toSec();
 }
 
 } // namespace virtualgimbal
