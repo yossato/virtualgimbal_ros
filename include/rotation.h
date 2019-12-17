@@ -35,6 +35,13 @@ public:
         data.emplace_back(time, q);
     };
 
+    void pop_old_close(ros::Time time)
+    {
+        auto it = std::find_if(data.begin(),data.end(),[&](std::pair<ros::Time,T> x){return time == x.first;});
+        ++it;
+        data.erase(it);
+    }
+
     void pop_old(ros::Time time)
     {
         // std::cout << "Input time:" << time << std::endl;
@@ -43,16 +50,15 @@ public:
         // {
         //     std::cout << el.first << std::endl;
         // }
-        auto it = std::find_if(data.begin(), data.end(), [&](std::pair<ros::Time, T> x) { return time < x.first; });
+        auto it = std::find_if(data.begin(), data.end(), [&](std::pair<ros::Time, T> x) { return time <= x.first; });
 
-        if(data.end() == it)
-        {
-            std::cerr << "Warning: Failed to pop_old()" << std::endl;
-        }
+        if(data.end() == it) return;
+        // if(data.begin() == it) return;
 
         // To linear interpolate data, a previous data is required, so decrease iterator.
+        
         --it;
-
+        // TODO:先頭を消せるようにする。ここ変。
         if (data.begin() != it)
         {
             data.erase(data.begin(), it);
@@ -63,7 +69,7 @@ public:
         // {
         //     std::cout << el.first << std::endl;
         // }
-    };
+        };
 
     void pop_front()
     {
@@ -97,18 +103,19 @@ public:
         }
     };
 
-    void is_available(ros::Time time)
+    bool is_available_after(ros::Time time)
     {
         if(data.empty())
         {
             return false;
         }
-        auto it = std::find_if(data.begin(), data.end(), [&](std::pair<ros::Time, T> x) { return time == x.first; });
-        if (data.begin() == it)
-        {
-            return false;
-        }
-        else if (data.end() == it)   // Not found
+        auto it = std::find_if(data.begin(), data.end(), [&](std::pair<ros::Time, T> x) { return time <= x.first; });
+        // if (data.begin() == it)
+        // {
+        //     return false;
+        // }
+        // else 
+        if (data.end() == it)   // Not found
         {
             return false;
         }
@@ -116,6 +123,11 @@ public:
         {
             return true;
         }
+    }
+
+    size_t count(ros::Time time)
+    {
+        return data.count(time);
     }
 
     T get(ros::Time time)
@@ -126,13 +138,33 @@ public:
             throw;
         }
 
-        auto it = std::find_if(data.begin(), data.end(), [&](std::pair<ros::Time, T> x) { return time == x.first; });
+        auto it = std::find_if(data.begin(), data.end(), [&](std::pair<ros::Time, T> x) { return time <= x.first; });
         if (data.end() == it)   // Not found
         {
             throw;
         }
         else
         {
+            return it->second;
+        }
+    }
+
+    T get(ros::Time request_time, ros::Time &actual_time)
+    {
+        
+        if(data.empty())
+        {
+            throw;
+        }
+
+        auto it = std::find_if(data.begin(), data.end(), [&](std::pair<ros::Time, T> x) { return request_time <= x.first; });
+        if (data.end() == it)   // Not found
+        {
+            throw;
+        }
+        else
+        {
+            actual_time = it->first;
             return it->second;
         }
     }
@@ -146,15 +178,15 @@ public:
             return DequeStatus::EMPTY;
         }
 
-        auto it = std::find_if(data.begin(), data.end(), [&](std::pair<ros::Time, T> x) { return time == x.first; });
-        if (data.begin() == it)
+        auto it = std::find_if(data.begin(), data.end(), [&](std::pair<ros::Time, T> x) { return time <= x.first; });
+        /*if (data.begin() == it)
         {
             // TODO: 最初と次の間の時間を指定された時に変な動作する？
             q = data.front().second;
 
             return DequeStatus::TIME_STAMP_IS_EARLIER_THAN_FRONT;
         }
-        else if (data.end() == it)   // Not found
+        else */if (data.end() == it)   // Not found
         {
             q = T();
             // std::cerr << "Failed to get()." << std::endl;
@@ -170,7 +202,7 @@ public:
     void print_all()
     {
         for(auto &el:data){
-            std::cout << el.first << ":" << el.second.coeffs().transpose() << std::endl;
+            std::cout << el.first << std::endl;//<< ":" << el.second.coeffs().transpose() << std::endl;
         }
     }
 

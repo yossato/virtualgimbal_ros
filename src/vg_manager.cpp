@@ -6,7 +6,7 @@ namespace virtualgimbal
 
 manager::manager() : pnh_("~"), image_transport_(nh_), q(1.0, 0, 0, 0), q_filtered(1.0, 0, 0, 0),
  last_vector(0, 0, 0), param(pnh_), publish_statistics(true),
- zoom_(1.3f),enable_black_space_removal_(true),cutoff_frequency_(0.5),enable_trimming_(true),offset_time_(0.0)
+ zoom_(1.3f),enable_black_space_removal_(true),cutoff_frequency_(0.5),enable_trimming_(true),offset_time_(ros::Duration(0.0))
 {
     std::string image = "/image";
     std::string imu_data = "/imu_data";
@@ -24,7 +24,10 @@ manager::manager() : pnh_("~"), image_transport_(nh_), q(1.0, 0, 0, 0), q_filter
     pnh_.param("enable_black_space_removal",enable_black_space_removal_,enable_black_space_removal_);
     pnh_.param("cutoff_frequency",cutoff_frequency_,cutoff_frequency_);
     pnh_.param("enable_trimming",enable_trimming_,enable_trimming_);
-    pnh_.param("offset_time",offset_time_,offset_time_);
+    
+    double offset_time_double = offset_time_.toSec();
+    pnh_.param("offset_time",offset_time_double,offset_time_double);
+    offset_time_ = ros::Duration(offset_time_double);
 
     camera_subscriber_ = image_transport_.subscribeCamera(image, 100, &manager::callback, this);
     imu_subscriber_ = pnh_.subscribe(imu_data, 10000, &manager::imu_callback, this);
@@ -49,7 +52,7 @@ manager::~manager()
     cv::destroyAllWindows();
 }
 
-MatrixPtr manager::getR(double ratio){
+MatrixPtr manager::getR(ros::Time time, double ratio){
     Eigen::Quaterniond raw, filtered;
     MatrixPtr R(new std::vector<float>(camera_info_->height_ * 9));
     
@@ -65,14 +68,14 @@ MatrixPtr manager::getR(double ratio){
             // std::cout << "ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)):" << ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)) << std::endl << std::flush;
             // std::cout << "src_image.front().first + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)+offset_time_:" << src_image.front().first + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)+offset_time_) << std::endl;
             // std::cout << " raw_angle_quaternion.front().first:" << raw_angle_quaternion.front().first << std::endl;
-            int status = raw_angle_quaternion.get(src_image.front().first + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)+offset_time_), raw);
+            int status = raw_angle_quaternion.get(time + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)), raw);
 
             if (DequeStatus::GOOD != status)
             {
                 ROS_ERROR("Logic error at %s:%d",__FUNCTION__,__LINE__);
                 throw;
             }
-            status = filtered_angle_quaternion.get(src_image.front().first + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)+offset_time_), filtered);
+            status = filtered_angle_quaternion.get(time + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)), filtered);
 
             if (DequeStatus::GOOD != status)
             {
@@ -87,14 +90,14 @@ MatrixPtr manager::getR(double ratio){
     {
         for (int row = 0, e = camera_info_->height_; row < e; ++row)
         {
-            int status = raw_angle_quaternion.get(src_image.front().first + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)+offset_time_), raw);
+            int status = raw_angle_quaternion.get(time + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)), raw);
 
             if (DequeStatus::GOOD != status)
             {
                 ROS_ERROR("Logic error at %s:%d",__FUNCTION__,__LINE__);
                 throw;
             }
-            status = filtered_angle_quaternion.get(src_image.front().first + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)+offset_time_), filtered);
+            status = filtered_angle_quaternion.get(time + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)), filtered);
 
             if (DequeStatus::GOOD != status)
             {
@@ -270,6 +273,10 @@ void manager::run()
     ros::Rate rate(120);
     while (ros::ok())
     {
+        ros::spinOnce();
+        rate.sleep();
+
+        if(!camera_info_) continue;
 
         // Show debug information
         if (publish_statistics)
@@ -282,8 +289,135 @@ void manager::run()
             filtered_quaternion_queue_size_pub.publish(msg2);
         }
 
+        // Is gyro availavle?
+        if (raw_angle_quaternion.size())
+        {
+            // Get first angle of gyro sensor
+            auto time_gyro_front = raw_angle_quaternion.front().first;
+            
+            ros::Duration half_height_delay = ros::Duration(fabs(camera_info_->line_delay_) * camera_info_->height_ * 0.5);
+            
+            // Time stamp of image. The image should be later than this time.
+            auto time_image_request = time_gyro_front + offset_time_ + half_height_delay;
+            if(!src_image.is_available_after(time_image_request))
+            {
+                ROS_INFO("time_image_request:%d:%d",time_image_request.sec,time_image_request.nsec);
+                src_image.print_all();
+                continue;
+            }
+
+            // Get time stamp of center row of the image
+            ros::Time time_image_center_line;
+            src_image.get(time_image_request,time_image_center_line);
+            
+            // Check availability of gyro angle data at the time stamp of the last row of the image
+            auto time_gyro_last_line = time_image_center_line + half_height_delay - offset_time_;
+            auto time_gyro_center_line = time_image_center_line - offset_time_;
+            auto time_gyro_first_line = time_image_center_line - half_height_delay - offset_time_;
+            if(!raw_angle_quaternion.is_available_after(time_gyro_last_line)) continue;
+
+            MatrixPtr R = getR(time_gyro_center_line);
+            double ratio = bisectionMethod(zoom_,R,camera_info_,0.0,1.0,1000,0.001);//TODO:zoomをなくす
+            ROS_INFO("ratio:%f",ratio);
+            std::cout << "ratio:" << ratio << std::endl << std::flush;
+            R = getR(time_gyro_center_line,ratio);
+
+            float ik1 = camera_info_->inverse_k1_;
+            float ik2 = camera_info_->inverse_k2_;
+            float ip1 = camera_info_->inverse_p1_;
+            float ip2 = camera_info_->inverse_p2_;
+            float fx = camera_info_->fx_;
+            float fy = camera_info_->fy_;
+            float cx = camera_info_->cx_;
+            float cy = camera_info_->cy_;
+            // float zoom = 1.f;
+
+            ros::Time time;
+            auto image = src_image.get(time_image_center_line,time);
+
+            // Define destinatino image 
+            int image_width_dst,image_height_dst;
+            float fx_dst,fy_dst,cx_dst,cy_dst,line_delay_dst;
+            if(enable_trimming_)
+            {
+                image_width_dst = image.cols / zoom_;
+                image_height_dst = image.rows / zoom_;
+                fx_dst = fx;
+                fy_dst = fy;
+                cx_dst = cx - (image.cols - image_width_dst)*0.5;
+                cy_dst = cy - (image.rows - image_height_dst)*0.5;
+                line_delay_dst = camera_info_->line_delay_;
+            }
+            else
+            {
+                image_width_dst = image.cols;
+                image_height_dst = image.rows;
+                fx_dst = fx*zoom_;
+                fy_dst = fy*zoom_;
+                cx_dst = cx;
+                cy_dst = cy;
+                line_delay_dst = camera_info_->line_delay_/zoom_;
+
+            }
+            if(!dst_camera_info_)
+            {
+                dst_camera_info_ = std::make_shared<CameraInformation>("dst_camera","dst_lens",Eigen::Quaterniond(1.0,0.,0.,0.),image_width_dst,image_height_dst,
+                fx_dst,fy_dst,cx_dst ,cy_dst,0.,0.,0.,0.,line_delay_dst);
+            }
+            UMatPtr umat_dst_ptr(new cv::UMat(cv::Size(image_width_dst,image_height_dst), CV_8UC4, cv::ACCESS_WRITE, cv::USAGE_ALLOCATE_DEVICE_MEMORY));
+            // cv::ocl::Image2D image_dst(*umat_dst_ptr, false, true);
+           
+            // Send arguments to kernel
+            cv::ocl::Image2D image_src(image);
+
+            cv::Mat mat_R = cv::Mat(R->size(), 1, CV_32F, R->data());
+            cv::UMat umat_R = mat_R.getUMat(cv::ACCESS_READ, cv::USAGE_ALLOCATE_DEVICE_MEMORY);
+            cv::ocl::Kernel kernel;
+            getKernel(kernel_name, kernel_function, kernel, context, build_opt);
+            kernel.args(image_src, cv::ocl::KernelArg::WriteOnly(*umat_dst_ptr), cv::ocl::KernelArg::ReadOnlyNoSize(umat_R),ik1,ik2,ip1,ip2,fx,fy,cx,cy,fx_dst,fy_dst,cx_dst,cy_dst);
+            size_t globalThreads[3] = {(size_t)image.cols, (size_t)image.rows, 1};
+            //size_t localThreads[3] = { 16, 16, 1 };
+            bool success = kernel.run(3, globalThreads, NULL, true);
+            if (!success)
+            {
+                std::cout << "Failed running the kernel..." << std::endl
+                          << std::flush;
+                throw "Failed running the kernel...";
+            }
+
+            // cv::imshow("received image", src_image.front().second);
+            // src_image.pop_front();
+            // cv::imshow("Stabilized image", *umat_dst_ptr);
+
+
+            sensor_msgs::ImagePtr msg = cv_bridge::CvImage(ros_camera_info_->header,"bgra8",umat_dst_ptr->getMat(cv::ACCESS_READ)).toImageMsg();
+            sensor_msgs::CameraInfo info = *ros_camera_info_;
+            info.header.stamp = time;
+            if(enable_trimming_)
+            {
+
+            }
+            else
+            {
+                info.K[0] *= zoom_; // fx
+                info.K[4] *= zoom_; // fy
+                info.P[0] *= zoom_; // fx
+                info.P[5] *= zoom_; // fy
+            }
+            camera_publisher_.publish(*msg,info);
+
+            raw_angle_quaternion.pop_old(time_gyro_first_line);    // TODO:ジャイロと画像のオフセットを考慮
+            filtered_angle_quaternion.pop_old(time_gyro_first_line);
+            src_image.pop_old_close(time_image_center_line);
+
+        }
+        else
+        {
+            continue;
+        }
+
         // If an images are available.
-        if (src_image.size())
+        if (0)//(src_image.size())
         {
             MatrixPtr R;//(new std::vector<float>(camera_info_->height_ * 9));
 
@@ -292,14 +426,29 @@ void manager::run()
             // Wait for IMU data ariving.
             if ((0 == raw_angle_quaternion.size()) || (0 == filtered_angle_quaternion.size()))
             {
-                ros::spinOnce();
-                rate.sleep();
+                // ros::spinOnce();
+                // rate.sleep();
                 continue;
             }
 
+            {   
+                // Get time of a first row
+                auto t_image_begin = src_image.front().first + offset_time_ - ros::Duration(fabs(camera_info_->line_delay_) * camera_info_->height_ * 0.5);
+                // Image arrived earler than gyro
+                if(t_image_begin < raw_angle_quaternion.front().first)
+                {
+                    if (src_image.size())
+                    {
+                        src_image.pop_front();
+                    }
+                    continue;
+                }
+                auto t_image_end = src_image.front().first + offset_time_ + ros::Duration(fabs(camera_info_->line_delay_) * camera_info_->height_ * 0.5);
+            }
+
             // If an image is older than IMU angle time stamp, delete the image since the image is not be able to be synchronized with IMU.
-            while ((DequeStatus::TIME_STAMP_IS_EARLIER_THAN_FRONT == raw_angle_quaternion.get(get_begin_time(src_image.front().first + ros::Duration(offset_time_)), raw)) ||
-                   (DequeStatus::TIME_STAMP_IS_EARLIER_THAN_FRONT == filtered_angle_quaternion.get(get_begin_time(src_image.front().first + ros::Duration(offset_time_)), filtered)))
+            while ((DequeStatus::TIME_STAMP_IS_EARLIER_THAN_FRONT == raw_angle_quaternion.get(get_begin_time(src_image.front().first + offset_time_), raw)) ||
+                   (DequeStatus::TIME_STAMP_IS_EARLIER_THAN_FRONT == filtered_angle_quaternion.get(get_begin_time(src_image.front().first + offset_time_), filtered)))
             {
                 src_image.pop_front();
                 ROS_WARN("Image is discarded, since Image has old time stamp.");
@@ -316,8 +465,8 @@ void manager::run()
             }
 
             // Try to get IMU angle.
-            if ((DequeStatus::TIME_STAMP_IS_LATER_THAN_BACK == raw_angle_quaternion.get(get_end_time(src_image.front().first + ros::Duration(offset_time_)), raw)) ||
-                (DequeStatus::TIME_STAMP_IS_LATER_THAN_BACK == filtered_angle_quaternion.get(get_end_time(src_image.front().first + ros::Duration(offset_time_)), filtered)))
+            if ((DequeStatus::TIME_STAMP_IS_LATER_THAN_BACK == raw_angle_quaternion.get(get_end_time(src_image.front().first + offset_time_), raw)) ||
+                (DequeStatus::TIME_STAMP_IS_LATER_THAN_BACK == filtered_angle_quaternion.get(get_end_time(src_image.front().first + offset_time_), filtered)))
             {
                 // If angles are not available, wait for it.
                 ROS_WARN("Waiting for IMU data.");
@@ -327,11 +476,11 @@ void manager::run()
             }
 
             // Calculate Rotation matrix for each line
-            R = getR();
-            // double ratio = bisectionMethod(zoom_,R,camera_info_,0.0,1.0,1000,0.001);//TODO:zoomをなくす
-            // ROS_INFO("ratio:%f",ratio);
-            // std::cout << "ratio:" << ratio << std::endl << std::flush;
-            // R = getR(ratio);
+            R = getR(src_image.front().first);
+            double ratio = bisectionMethod(zoom_,R,camera_info_,0.0,1.0,1000,0.001);//TODO:zoomをなくす
+            ROS_INFO("ratio:%f",ratio);
+            std::cout << "ratio:" << ratio << std::endl << std::flush;
+            R = getR(src_image.front().first,ratio);
 
             if (0)
             {
@@ -353,13 +502,13 @@ void manager::run()
             // Pop old angle quaternions
             if (camera_info_->line_delay_ >= 0)
             {
-                raw_angle_quaternion.pop_old(src_image.front().first + ros::Duration(camera_info_->line_delay_ * ((camera_info_->height_ - 1) - camera_info_->height_ * 0.5)+offset_time_));
-                filtered_angle_quaternion.pop_old(src_image.front().first + ros::Duration(camera_info_->line_delay_ * ((camera_info_->height_ - 1) - camera_info_->height_ * 0.5)+offset_time_));
+                raw_angle_quaternion.pop_old(src_image.front().first + ros::Duration(camera_info_->line_delay_ * ((camera_info_->height_ - 1) - camera_info_->height_ * 0.5))+offset_time_);
+                filtered_angle_quaternion.pop_old(src_image.front().first + ros::Duration(camera_info_->line_delay_ * ((camera_info_->height_ - 1) - camera_info_->height_ * 0.5))+offset_time_);
             }
             else
             {
-                raw_angle_quaternion.pop_old(src_image.front().first + ros::Duration(camera_info_->line_delay_ * (0 - camera_info_->height_ * 0.5)+offset_time_));
-                filtered_angle_quaternion.pop_old(src_image.front().first + ros::Duration(camera_info_->line_delay_ * (0 - camera_info_->height_ * 0.5)+offset_time_));
+                raw_angle_quaternion.pop_old(src_image.front().first + ros::Duration(camera_info_->line_delay_ * (0 - camera_info_->height_ * 0.5))+offset_time_);
+                filtered_angle_quaternion.pop_old(src_image.front().first + ros::Duration(camera_info_->line_delay_ * (0 - camera_info_->height_ * 0.5))+offset_time_);
             }
 
             float ik1 = camera_info_->inverse_k1_;
@@ -465,16 +614,15 @@ void manager::run()
             // }
         }
 
-        char key = cv::waitKey(1);
+        // char key = cv::waitKey(1);
 
-        if ('q' == key)
-        {
-            cv::destroyAllWindows();
-            ros::shutdown();
-        }
+        // if ('q' == key)
+        // {
+        //     cv::destroyAllWindows();
+        //     ros::shutdown();
+        // }
 
-        ros::spinOnce();
-        rate.sleep();
+
     }
 }
 

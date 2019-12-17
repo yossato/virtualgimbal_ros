@@ -51,7 +51,7 @@ private:
     ros::Publisher raw_quaternion_pub,filtered_quaternion_pub,estimated_angular_velocity_pub,measured_augular_velocity_pub,
     raw_quaternion_queue_size_pub,filtered_quaternion_queue_size_pub;  
     Eigen::Vector3d last_vector;
-    MatrixPtr getR(double ratio=1.0);
+    MatrixPtr getR(ros::Time time, double ratio=1.0);
     ros::Time get_begin_time(ros::Time time);
     ros::Time get_end_time(ros::Time time);
 
@@ -71,7 +71,7 @@ private:
     float cutoff_frequency_;
     float a1_;
     bool enable_trimming_;
-    double offset_time_;
+    ros::Duration offset_time_;
 
     // Prepare OpenCL
     cv::ocl::Context context;
