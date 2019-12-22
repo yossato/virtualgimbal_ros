@@ -60,34 +60,37 @@ MatrixPtr manager::getR(ros::Time time, double ratio){
     assert((ratio - 1.0) < std::numeric_limits<double>::epsilon());
 
     // Calculate Rotation matrix for each line
-    if(fabs(ratio - 1.0) < std::numeric_limits<double>::epsilon())
-    {
-        for (int row = 0, e = camera_info_->height_; row < e; ++row)
-        {
-            // std::cout << "src_image.front().first:" << src_image.front().first << std::endl;
-            // std::cout << "ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)):" << ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)) << std::endl << std::flush;
-            // std::cout << "src_image.front().first + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)+offset_time_:" << src_image.front().first + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)+offset_time_) << std::endl;
-            // std::cout << " raw_angle_quaternion.front().first:" << raw_angle_quaternion.front().first << std::endl;
-            int status = raw_angle_quaternion.get(time + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)), raw);
+    // if(fabs(ratio - 1.0) < std::numeric_limits<double>::epsilon())
+    // {
+    //     for (int row = 0, e = camera_info_->height_; row < e; ++row)
+    //     {
+    //         // std::cout << "src_image.front().first:" << src_image.front().first << std::endl;
+    //         // std::cout << "ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)):" << ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)) << std::endl << std::flush;
+    //         // std::cout << "src_image.front().first + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)+offset_time_:" << src_image.front().first + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)+offset_time_) << std::endl;
+    //         // std::cout << " raw_angle_quaternion.front().first:" << raw_angle_quaternion.front().first << std::endl;
+    //         int status = raw_angle_quaternion.get(time + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)), raw);
 
-            if (DequeStatus::GOOD != status)
-            {
-                ROS_ERROR("Logic error at %s:%d",__FUNCTION__,__LINE__);
-                throw;
-            }
-            status = filtered_angle_quaternion.get(time + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)), filtered);
+    //         if (DequeStatus::GOOD != status)
+    //         {
+    //             ROS_ERROR("Logic error at %s:%d",__FUNCTION__,__LINE__);
+    //             throw;
+    //         }
+    //         status = filtered_angle_quaternion.get(time + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)), filtered);
 
-            if (DequeStatus::GOOD != status)
-            {
-                ROS_ERROR("Logic error at %s:%d",__FUNCTION__,__LINE__);
-                throw;
-            }
-            Eigen::Map<Eigen::Matrix<float, 3, 3, Eigen::RowMajor>>(&(*R)[row * 9], 3, 3) =
-                (raw * filtered.conjugate()).matrix().cast<float>(); //順序合ってる？
-        }
-    }
-    else
-    {
+    //         if (DequeStatus::GOOD != status)
+    //         {
+    //             ROS_ERROR("Logic error at %s:%d",__FUNCTION__,__LINE__);
+    //             throw;
+    //         }
+    //         Eigen::Map<Eigen::Matrix<float, 3, 3, Eigen::RowMajor>>(&(*R)[row * 9], 3, 3) =
+    //             // (raw * filtered.conjugate()).matrix().cast<float>(); //順序合ってる？
+    //             // (raw.conjugate() * filtered).matrix().cast<float>(); //順序合ってる？
+    //             // (filtered * raw.conjugate()).matrix().cast<float>(); //順序合ってる？
+    //             (filtered.conjugate() * raw).conjugate().matrix().cast<float>(); //順序合ってる？
+    //     }
+    // }
+    // else
+    // {
         for (int row = 0, e = camera_info_->height_; row < e; ++row)
         {
             int status = raw_angle_quaternion.get(time + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)), raw);
@@ -112,7 +115,7 @@ MatrixPtr manager::getR(ros::Time time, double ratio){
             Eigen::Map<Eigen::Matrix<float, 3, 3, Eigen::RowMajor>>(&(*R)[row * 9], 3, 3) =
                 q2.matrix().cast<float>();
         }
-    }
+    // }
 
 
     return R;
@@ -206,8 +209,8 @@ void manager::imu_callback(const sensor_msgs::Imu::ConstPtr &msg)
         float a1 = (1.f - w_a) / (1.f + w_a); 
 
 
-        Eigen::Vector3d vec = a1 * Quaternion2Vector<double>((q.conjugate() * q_filtered).normalized(), last_vector);
-        q_filtered = q * Vector2Quaternion<double>(vec);
+        Eigen::Vector3d vec = a1 * Quaternion2Vector<double>((q_filtered * q.conjugate()).normalized(), last_vector);
+        q_filtered =  Vector2Quaternion<double>(vec) * q;
         q_filtered.normalize();
 
         last_vector = vec;
@@ -301,8 +304,8 @@ void manager::run()
             auto time_image_request = time_gyro_front + offset_time_ + half_height_delay;
             if(!src_image.is_available_after(time_image_request))
             {
-                ROS_INFO("time_image_request:%d:%d",time_image_request.sec,time_image_request.nsec);
-                src_image.print_all();
+                // ROS_INFO("time_image_request:%d:%d",time_image_request.sec,time_image_request.nsec);
+                // src_image.print_all();
                 continue;
             }
 
@@ -317,10 +320,10 @@ void manager::run()
             if(!raw_angle_quaternion.is_available_after(time_gyro_last_line)) continue;
 
             MatrixPtr R = getR(time_gyro_center_line);
-            double ratio = bisectionMethod(zoom_,R,camera_info_,0.0,1.0,1000,0.001);//TODO:zoomをなくす
-            ROS_INFO("ratio:%f",ratio);
-            std::cout << "ratio:" << ratio << std::endl << std::flush;
-            R = getR(time_gyro_center_line,ratio);
+            // double ratio = bisectionMethod(zoom_,R,camera_info_,0.0,1.0,1000,0.001);//TODO:zoomをなくす
+            // ROS_INFO("ratio:%f",ratio);
+            // std::cout << "ratio:" << ratio << std::endl << std::flush;
+            // R = getR(time_gyro_center_line,ratio);
 
             float ik1 = camera_info_->inverse_k1_;
             float ik2 = camera_info_->inverse_k2_;
