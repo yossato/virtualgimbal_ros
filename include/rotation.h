@@ -4,6 +4,7 @@
 #include <deque>
 #include "ros/ros.h"
 #include <Eigen/Dense>
+#include "least_squares_method.h"
 namespace virtualgimbal
 {
 
@@ -198,6 +199,11 @@ public:
             return DequeStatus::GOOD;
         }
     };
+
+    void print_least_squares_method();
+    // {
+    //             std::cout << "Error" << std::endl;
+    // }
 
     void print_all()
     {

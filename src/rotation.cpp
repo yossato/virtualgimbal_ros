@@ -1,5 +1,5 @@
 #include "rotation.h"
-
+#include "SO3Filters.h"
 namespace virtualgimbal
 {
 
@@ -82,4 +82,29 @@ Eigen::Vector3d StampedDeque<Eigen::Vector3d>::get(ros::Time time)
         return it->second * a + pit->second * (1.0-a);
     }
 };
+
+    template <>
+    void StampedDeque<Eigen::Quaternion<double>>::print_least_squares_method()
+    {
+        if(data.size() > 100)
+        {
+            auto el = data.end() - 100;
+            Eigen::VectorXd time(100);
+            Eigen::VectorXd angle(100);
+            for(int i=0;el!= data.end();++el)
+            {
+                time(i)  = (el->first - data.back().first).toSec();
+                angle(i) = Quaternion2Vector(el->second)[0];
+                ++i;
+            }
+            Eigen::VectorXd coeff = least_squares_method(time,angle,2);
+            printf("Coeff:%f %f %f\r\n",coeff(0),coeff(1),coeff(2));
+            for(int i=0;i<100;++i)
+            {
+                std::cout << time(i) << "," << angle(i) << "," << coeff(0) + time(i) * coeff(1) + pow(time(i),2.0) * coeff(2) << std::endl;
+            }
+            std::cout << std::flush;
+        }
+    }
+
 } // namespace virtualgimbal
