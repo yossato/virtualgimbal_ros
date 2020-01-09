@@ -100,7 +100,8 @@ MatrixPtr manager::getR(ros::Time time, double ratio){
                 ROS_ERROR("Logic error at %s:%d",__FUNCTION__,__LINE__);
                 throw;
             }
-            status = filtered_angle_quaternion.get(time + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)), filtered);
+            // status = filtered_angle_quaternion.get(time + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)), filtered);
+            status = filtered_angle_quaternion.get(time, filtered);
 
             if (DequeStatus::GOOD != status)
             {
@@ -210,7 +211,8 @@ void manager::imu_callback(const sensor_msgs::Imu::ConstPtr &msg)
 
 
         Eigen::Vector3d vec = a1 * Quaternion2Vector<double>((q_filtered * q.conjugate()).normalized(), last_vector);
-        q_filtered =  Vector2Quaternion<double>(vec) * q;
+        // q_filtered =  Vector2Quaternion<double>(vec) * q;
+        q_filtered =  q * Vector2Quaternion<double>(vec);
         q_filtered.normalize();
 
         last_vector = vec;
@@ -388,14 +390,9 @@ void manager::run()
                 throw "Failed running the kernel...";
             }
 
-            // cv::imshow("received image", src_image.front().second);
-            // src_image.pop_front();
-            // cv::imshow("Stabilized image", *umat_dst_ptr);
-
-            if(raw_angle_quaternion.size() > 100){
-                raw_angle_quaternion.print_least_squares_method();
-            }
-
+            // if(raw_angle_quaternion.size() > 100){
+            //     raw_angle_quaternion.print_least_squares_method();
+            // }
 
             sensor_msgs::ImagePtr msg = cv_bridge::CvImage(ros_camera_info_->header,"bgra8",umat_dst_ptr->getMat(cv::ACCESS_READ)).toImageMsg();
             sensor_msgs::CameraInfo info = *ros_camera_info_;

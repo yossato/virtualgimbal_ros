@@ -200,7 +200,7 @@ public:
         }
     };
 
-    void print_least_squares_method();
+    void print_least_squares_method(const ros::Time &begin, const ros::Time &end);
     // {
     //             std::cout << "Error" << std::endl;
     // }
