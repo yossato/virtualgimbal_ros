@@ -58,7 +58,7 @@ public:
 
         // To linear interpolate data, a previous data is required, so decrease iterator.
         
-        --it;
+        // --it;
         // TODO:先頭を消せるようにする。ここ変。
         if (data.begin() != it)
         {

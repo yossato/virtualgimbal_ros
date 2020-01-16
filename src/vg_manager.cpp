@@ -188,6 +188,7 @@ void manager::imu_callback(const sensor_msgs::Imu::ConstPtr &msg)
         return;
     }
     Eigen::Vector3d w(msg->angular_velocity.x, msg->angular_velocity.y, msg->angular_velocity.z);
+    // Eigen::Vector3d w(-0.5,-0.5, 0);
 
     if (imu_previous)
     { // Previous data is exist.
@@ -390,8 +391,9 @@ void manager::run()
                 throw "Failed running the kernel...";
             }
 
-            // if(raw_angle_quaternion.size() > 100){
-            //     raw_angle_quaternion.print_least_squares_method();
+            // if(raw_angle_quaternion.is_available_after(time_gyro_last_line-ros::Duration(1.0)) && raw_angle_quaternion.is_available_after(time_gyro_last_line))
+            // {
+            //     raw_angle_quaternion.print_least_squares_method(time_gyro_last_line-ros::Duration(1.0),time_gyro_last_line);
             // }
 
             sensor_msgs::ImagePtr msg = cv_bridge::CvImage(ros_camera_info_->header,"bgra8",umat_dst_ptr->getMat(cv::ACCESS_READ)).toImageMsg();
@@ -410,7 +412,7 @@ void manager::run()
             }
             camera_publisher_.publish(*msg,info);
 
-            raw_angle_quaternion.pop_old(time_gyro_first_line);    // TODO:ジャイロと画像のオフセットを考慮
+            raw_angle_quaternion.pop_old(time_gyro_last_line-ros::Duration(1.0));    // TODO:ジャイロと画像のオフセットを考慮
             filtered_angle_quaternion.pop_old(time_gyro_first_line);
             src_image.pop_old_close(time_image_center_line);
 
