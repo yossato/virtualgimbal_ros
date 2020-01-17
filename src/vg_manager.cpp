@@ -109,7 +109,7 @@ MatrixPtr manager::getR(ros::Time time, double ratio){
                 throw;
             }
 
-            Eigen::Quaterniond q = raw * filtered.conjugate();
+            Eigen::Quaterniond q = filtered.conjugate() * raw;
             Eigen::Vector3d vec = Quaternion2Vector(q) * ratio;
             Eigen::Quaterniond q2 = Vector2Quaternion<double>(vec );
 
@@ -187,8 +187,8 @@ void manager::imu_callback(const sensor_msgs::Imu::ConstPtr &msg)
         ROS_WARN("Input angular velocity and time stamp contains NaN. Skipped.");
         return;
     }
-    Eigen::Vector3d w(msg->angular_velocity.x, msg->angular_velocity.y, msg->angular_velocity.z);
-    // Eigen::Vector3d w(-0.5,-0.5, 0);
+    // Eigen::Vector3d w(msg->angular_velocity.x, msg->angular_velocity.y, msg->angular_velocity.z);
+    Eigen::Quaterniond w_g(0.0, msg->angular_velocity.x, msg->angular_velocity.y, msg->angular_velocity.z);
 
     if (imu_previous)
     { // Previous data is exist.
@@ -201,7 +201,12 @@ void manager::imu_callback(const sensor_msgs::Imu::ConstPtr &msg)
             filtered_angle_quaternion.clear();
             return;
         }
-        Eigen::Vector3d dq = w * diff.toSec();
+
+        Eigen::Quaterniond w_o = q * w_g * q.conjugate();
+        Eigen::Vector3d dq = Eigen::Vector3d(w_o.x(),w_o.y(),w_o.z()) * diff.toSec();
+
+        // Eigen::Vector3d dq = w * diff.toSec();
+        
         q = q * Vector2Quaternion<double>(dq);
         q.normalize();
         // Bilinear transform, prewarping
@@ -212,8 +217,8 @@ void manager::imu_callback(const sensor_msgs::Imu::ConstPtr &msg)
 
 
         Eigen::Vector3d vec = a1 * Quaternion2Vector<double>((q_filtered * q.conjugate()).normalized(), last_vector);
-        // q_filtered =  Vector2Quaternion<double>(vec) * q;
-        q_filtered =  q * Vector2Quaternion<double>(vec);
+        q_filtered =  Vector2Quaternion<double>(vec) * q;
+        // q_filtered =  q * Vector2Quaternion<double>(vec);
         q_filtered.normalize();
 
         last_vector = vec;
