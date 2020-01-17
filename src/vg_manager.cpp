@@ -113,6 +113,8 @@ MatrixPtr manager::getR(ros::Time time, double ratio){
             Eigen::Vector3d vec = Quaternion2Vector(q) * ratio;
             Eigen::Quaterniond q2 = Vector2Quaternion<double>(vec );
 
+            q2 = raw.conjugate() * q2 * raw;
+
             Eigen::Map<Eigen::Matrix<float, 3, 3, Eigen::RowMajor>>(&(*R)[row * 9], 3, 3) =
                 q2.matrix().cast<float>();
         }
