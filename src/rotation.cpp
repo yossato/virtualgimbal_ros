@@ -139,6 +139,7 @@ Eigen::Vector3d StampedDeque<Eigen::Vector3d>::get(ros::Time time)
         {
             time(i)  = ((begin_el+i)->first - standard_time).toSec();
             Eigen::VectorXd vec = Quaternion2Vector(((begin_el+i)->second * origin.conjugate()).normalized());
+            // Eigen::VectorXd vec = Quaternion2Vector(origin.conjugate() * ((begin_el+i)->second).normalized());
             angle_x(i) = vec[0];
             angle_y(i) = vec[1];
             angle_z(i) = vec[2];
@@ -156,7 +157,7 @@ Eigen::Vector3d StampedDeque<Eigen::Vector3d>::get(ros::Time time)
                                                                     coeff_z(0) + diff_t * coeff_z(1) + pow(diff_t,2.0) * coeff_z(2))) * origin;
         
 
-        return lsm_value;
+        return lsm_value.normalized();
     }
 
 } // namespace virtualgimbal

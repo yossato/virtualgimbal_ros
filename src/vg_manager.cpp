@@ -117,10 +117,14 @@ MatrixPtr manager::getR_LMS(ros::Time time, const ros::Time begin, const ros::Ti
         }
 
         Eigen::Quaterniond q = correction_quaternion.conjugate() * raw;
+        // Eigen::Quaterniond q = raw * correction_quaternion.conjugate();
         Eigen::Vector3d vec = Quaternion2Vector(q) * ratio;
         Eigen::Quaterniond q2 = Vector2Quaternion<double>(vec );
 
-        q2 = raw.conjugate() * q2 * raw;
+        // q2 = (raw.conjugate() * q2 * raw).normalized();
+        // q2 = (raw.conjugate() * correction_quaternion.conjugate() * raw * raw).normalized();
+        q2 = (correction_quaternion.conjugate() * raw).normalized();
+        // q2 = (raw * correction_quaternion.conjugate()).normalized();
 
         Eigen::Map<Eigen::Matrix<float, 3, 3, Eigen::RowMajor>>(&(*R)[row * 9], 3, 3) =
             q2.matrix().cast<float>();
@@ -333,8 +337,8 @@ void manager::run()
             auto time_gyro_first_line = time_image_center_line - half_height_delay - offset_time_;
             if(!raw_angle_quaternion.is_available_after(time_gyro_last_line)) continue;
 
-            MatrixPtr R = getR(time_gyro_center_line);
-            MatrixPtr R2 = getR_LMS(time_gyro_center_line,time_gyro_last_line-ros::Duration(1.0),time_gyro_last_line);
+            // MatrixPtr R2 = getR(time_gyro_center_line);
+            MatrixPtr R2 = getR_LMS(time_gyro_center_line,time_gyro_last_line-ros::Duration(2.0),time_gyro_last_line);
             // double ratio = bisectionMethod(zoom_,R,camera_info_,0.0,1.0,1000,0.001);//TODO:zoomをなくす
             // ROS_INFO("ratio:%f",ratio);
             // std::cout << "ratio:" << ratio << std::endl << std::flush;
@@ -425,8 +429,8 @@ void manager::run()
             }
             camera_publisher_.publish(*msg,info);
 
-            raw_angle_quaternion.pop_old(time_gyro_last_line-ros::Duration(1.0));    // TODO:ジャイロと画像のオフセットを考慮
-            filtered_angle_quaternion.pop_old(time_gyro_first_line);
+            raw_angle_quaternion.pop_old(time_gyro_first_line-ros::Duration(3.0));    // TODO:ジャイロと画像のオフセットを考慮
+            filtered_angle_quaternion.pop_old(time_gyro_first_line-ros::Duration(3.0));
             src_image.pop_old_close(time_image_center_line);
 
         }
