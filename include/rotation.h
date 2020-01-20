@@ -201,10 +201,8 @@ public:
     };
 
     void print_least_squares_method(const ros::Time &begin, const ros::Time &end);
-    // {
-    //             std::cout << "Error" << std::endl;
-    // }
-
+    Eigen::Quaterniond get_correction_quaternion_using_least_squares_method(const ros::Time &begin, const ros::Time &end, ros::Time &times);
+    
     void print_all()
     {
         for(auto &el:data){

@@ -103,7 +103,7 @@ Eigen::Vector3d StampedDeque<Eigen::Vector3d>::get(ros::Time time)
         for(int i=0;i < num;++i)
         {
             time(i)  = ((begin_el+i)->first - (end_el)->first).toSec();
-            angle(i) = Quaternion2Vector((begin_el+i)->second)[0];
+            angle(i) = Quaternion2Vector((begin_el+i)->second * end_el->second.conjugate())[0];
         }
         Eigen::VectorXd coeff = least_squares_method(time,angle,2);
         printf("Coeff:%f %f %f\r\n",coeff(0),coeff(1),coeff(2));
@@ -113,6 +113,50 @@ Eigen::Vector3d StampedDeque<Eigen::Vector3d>::get(ros::Time time)
         }
         std::cout << std::flush;
         // }
+    }
+
+    template <>
+    Eigen::Quaterniond StampedDeque<Eigen::Quaternion<double>>::get_correction_quaternion_using_least_squares_method(const ros::Time &begin, const ros::Time &end, ros::Time &target)
+    {
+        auto begin_el   = std::find_if(data.begin(),data.end(),[&begin](std::pair<ros::Time, Eigen::Quaterniond> x) { return begin < x.first; });
+        auto target_el  = std::find_if(data.begin(),data.end(),[&target](std::pair<ros::Time, Eigen::Quaterniond> x) { return target < x.first; });
+        auto end_el     = std::find_if(data.begin(),data.end(),[&end](std::pair<ros::Time, Eigen::Quaterniond> x) { return end < x.first; });
+        
+        ros::Time standard_time = target_el->first;
+        int num = std::distance(begin_el,end_el);
+        Eigen::Quaterniond origin = target_el->second;
+
+        
+
+        Eigen::VectorXd time(num);
+        Eigen::VectorXd angle_x(num);
+        Eigen::VectorXd angle_y(num);
+        Eigen::VectorXd angle_z(num);
+
+        
+
+        for(int i=0;i < num;++i)
+        {
+            time(i)  = ((begin_el+i)->first - standard_time).toSec();
+            Eigen::VectorXd vec = Quaternion2Vector(((begin_el+i)->second * origin.conjugate()).normalized());
+            angle_x(i) = vec[0];
+            angle_y(i) = vec[1];
+            angle_z(i) = vec[2];
+        }
+        Eigen::VectorXd coeff_x = least_squares_method(time,angle_x,2);
+        Eigen::VectorXd coeff_y = least_squares_method(time,angle_y,2);
+        Eigen::VectorXd coeff_z = least_squares_method(time,angle_z,2);
+        // printf("Coeff:%f %f %f\r\n",coeff(0),coeff(1),coeff(2));
+
+        
+        Eigen::Quaterniond lsm_value;
+            double diff_t = (target - standard_time).toSec();
+            lsm_value = Vector2Quaternion<double>(Eigen::Vector3d(  coeff_x(0) + diff_t * coeff_x(1) + pow(diff_t,2.0) * coeff_x(2),
+                                                                    coeff_y(0) + diff_t * coeff_y(1) + pow(diff_t,2.0) * coeff_y(2),
+                                                                    coeff_z(0) + diff_t * coeff_z(1) + pow(diff_t,2.0) * coeff_z(2))) * origin;
+        
+
+        return lsm_value;
     }
 
 } // namespace virtualgimbal
