@@ -1,5 +1,11 @@
 #include "rotation.h"
 #include "SO3Filters.h"
+
+// For debug
+#include <opencv2/highgui.hpp>
+#include <opencv2/plot.hpp>
+
+
 namespace virtualgimbal
 {
 
@@ -156,6 +162,92 @@ Eigen::Vector3d StampedDeque<Eigen::Vector3d>::get(ros::Time time)
                                                                     coeff_y(0) + diff_t * coeff_y(1) + pow(diff_t,2.0) * coeff_y(2),
                                                                     coeff_z(0) + diff_t * coeff_z(1) + pow(diff_t,2.0) * coeff_z(2))) * origin;
         
+        {
+                // For debug
+                // angle_x = Eigen::VectorXd::Zero(500);
+                //  angle_y = Eigen::VectorXd::Ones(500);
+                // angle_z = -1*Eigen::VectorXd::Ones(500);
+                // for(int i=0;i<angle_x.size();++i)
+                // {
+                //     angle_x(i) = i;
+                //     angle_y(i) = i;
+                //     angle_z(i) = i;
+                // }
+            
+            // cv::Mat plot_data = cv::Mat::zeros(angle_x.size(),1,CV_64F);
+            // // memcpy(plot_data.data,angle_x.data(),sizeof(double)*angle_x.size());
+            int width = 640;
+            int height = 480;
+            cv::Mat plot_result_x = cv::Mat::zeros(height,width,CV_8UC3);//,plot_result_y,plot_result_z;
+            for(int i=0;i<width;++i)
+            {
+                double gain = 500;
+                int index = (double)i/width*(angle_x.size()-1);
+                double value = angle_x(index) *gain + height/2;
+                int r = std::min(height-1,std::max(0,(int)value));
+                // printf("angle_x:%f\r\n",value);
+                plot_result_x.at<cv::Vec3b>(r,i) = cv::Vec3b(0,0,255);
+
+
+                value = angle_y(index) *gain + height/2;
+                r = std::min(height-1,std::max(0,(int)value));
+                // printf("angle_x:%f\r\n",value);
+                plot_result_x.at<cv::Vec3b>(r,i) = cv::Vec3b(0,255,0);
+
+                value = angle_z(index) *gain + height/2;
+                r = std::min(height-1,std::max(0,(int)value));
+                // printf("angle_x:%f\r\n",value);
+                plot_result_x.at<cv::Vec3b>(r,i) = cv::Vec3b(255,0,0);
+
+                Eigen::Vector3d vec = Eigen::Vector3d(  coeff_x(0) + time(index) * coeff_x(1) + pow(time(index),2.0) * coeff_x(2),
+                                                                    coeff_y(0) + time(index) * coeff_y(1) + pow(time(index),2.0) * coeff_y(2),
+                                                                    coeff_z(0) + time(index) * coeff_z(1) + pow(time(index),2.0) * coeff_z(2));
+
+                value = vec[0] *gain + height/2;
+                r = std::min(height-1,std::max(0,(int)value));
+                plot_result_x.at<cv::Vec3b>(r,i) = cv::Vec3b(127,127,255);
+
+                value = vec[1] *gain + height/2;
+                r = std::min(height-1,std::max(0,(int)value));
+                plot_result_x.at<cv::Vec3b>(r,i) = cv::Vec3b(127,255,127);
+
+                value = vec[2] *gain + height/2;
+                r = std::min(height-1,std::max(0,(int)value));
+                plot_result_x.at<cv::Vec3b>(r,i) = cv::Vec3b(255,127,127);
+            }
+
+            // cv::Ptr<cv::plot::Plot2d> plot = cv::plot::Plot2d::create(plot_data);
+            // if(0)
+            // {
+            //     //  plot = cv::plot::Plot2d::create(plot_data);
+            //     memcpy(plot_data.data,angle_x.data(),sizeof(double)*angle_x.size());
+            //     plot_data.at<double>(0,0) = 2.0;
+            //     plot_data.at<double>(1,0) = -2.0;
+                
+            //      plot->setPlotBackgroundColor(cv::Scalar(0,0,0));
+            //     plot->setPlotLineColor(cv::Scalar(0,0,255));
+            //     plot->render(plot_result_x);
+            // }
+        
+            // plot->setPlotBackgroundColor(cv::Scalar(0,0,0));
+            // plot->setPlotLineColor(cv::Scalar(0,0,255));
+            // memcpy(plot_data.data,angle_x.data(),sizeof(double)*angle_x.size());
+            // plot->render(plot_result_x);
+
+            // plot->setPlotLineColor(cv::Scalar(0,255,0));
+            // memcpy(plot_data.data,angle_y.data(),sizeof(double)*angle_y.size());
+            // plot->render(plot_result_y);
+
+            // plot->setPlotLineColor(cv::Scalar(255,0,0));
+            // memcpy(plot_data.data,angle_z.data(),sizeof(double)*angle_z.size());
+            // plot->render(plot_result_z);
+
+            // cv::imshow("plot",plot_result_x+plot_result_y+plot_result_z);
+                cv::imshow("plot",plot_result_x);
+            cv::waitKey(1);
+
+        }
+
 
         return lsm_value.normalized();
     }

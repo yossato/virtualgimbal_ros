@@ -408,11 +408,6 @@ void manager::run()
                 throw "Failed running the kernel...";
             }
 
-            // if(raw_angle_quaternion.is_available_after(time_gyro_last_line-ros::Duration(1.0)) && raw_angle_quaternion.is_available_after(time_gyro_last_line))
-            // {
-            //     raw_angle_quaternion.print_least_squares_method(time_gyro_last_line-ros::Duration(1.0),time_gyro_last_line);
-            // }
-
             sensor_msgs::ImagePtr msg = cv_bridge::CvImage(ros_camera_info_->header,"bgra8",umat_dst_ptr->getMat(cv::ACCESS_READ)).toImageMsg();
             sensor_msgs::CameraInfo info = *ros_camera_info_;
             info.header.stamp = time;
