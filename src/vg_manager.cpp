@@ -295,6 +295,7 @@ void manager::run()
     while (ros::ok())
     {
         ros::spinOnce();
+        cv::waitKey(1);
         rate.sleep();
 
         if(!camera_info_) continue;
