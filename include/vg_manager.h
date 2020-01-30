@@ -52,7 +52,7 @@ private:
     raw_quaternion_queue_size_pub,filtered_quaternion_queue_size_pub;  
     Eigen::Vector3d last_vector;
     MatrixPtr getR(ros::Time time, double ratio=1.0);
-    MatrixPtr getR_LMS(ros::Time time, const ros::Time begin, const ros::Time end, double ratio=1.0);
+    MatrixPtr getR_LMS(ros::Time time, const ros::Time begin, const ros::Time end, int order, double ratio=1.0);
     ros::Time get_begin_time(ros::Time time);
     ros::Time get_end_time(ros::Time time);
 
@@ -80,6 +80,10 @@ private:
 
     // Debug
     bool publish_statistics;
+
+    // LMS
+    double lms_period_;
+    int lms_order_;
 };
 
 } // namespace virtualgimbal

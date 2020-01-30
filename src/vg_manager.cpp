@@ -6,7 +6,8 @@ namespace virtualgimbal
 
 manager::manager() : pnh_("~"), image_transport_(nh_), q(1.0, 0, 0, 0), q_filtered(1.0, 0, 0, 0),
  last_vector(0, 0, 0), param(pnh_), publish_statistics(true),
- zoom_(1.3f),enable_black_space_removal_(true),cutoff_frequency_(0.5),enable_trimming_(true),offset_time_(ros::Duration(0.0))
+ zoom_(1.3f),enable_black_space_removal_(true),cutoff_frequency_(0.5),enable_trimming_(true),
+ offset_time_(ros::Duration(0.0)), lms_period_(2.0), lms_order_(2)
 {
     std::string image = "/image";
     std::string imu_data = "/imu_data";
@@ -28,6 +29,9 @@ manager::manager() : pnh_("~"), image_transport_(nh_), q(1.0, 0, 0, 0), q_filter
     double offset_time_double = offset_time_.toSec();
     pnh_.param("offset_time",offset_time_double,offset_time_double);
     offset_time_ = ros::Duration(offset_time_double);
+
+    pnh_.param("lsm_period",lms_period_,lms_period_);
+    pnh_.param("lsm_order",lms_order_,lms_order_);
 
     camera_subscriber_ = image_transport_.subscribeCamera(image, 100, &manager::callback, this);
     imu_subscriber_ = pnh_.subscribe(imu_data, 10000, &manager::imu_callback, this);
@@ -88,7 +92,7 @@ MatrixPtr manager::getR(ros::Time time, double ratio){
     return R;
 }
 
-MatrixPtr manager::getR_LMS(ros::Time time, const ros::Time begin, const ros::Time end, double ratio)
+MatrixPtr manager::getR_LMS(ros::Time time, const ros::Time begin, const ros::Time end, int order, double ratio)
 {
     Eigen::Quaterniond raw, filtered;
     MatrixPtr R(new std::vector<float>(camera_info_->height_ * 9));
@@ -96,7 +100,7 @@ MatrixPtr manager::getR_LMS(ros::Time time, const ros::Time begin, const ros::Ti
     assert(ratio >= 0.0);
     assert((ratio - 1.0) < std::numeric_limits<double>::epsilon());
 
-    Eigen::Quaterniond correction_quaternion = raw_angle_quaternion.get_correction_quaternion_using_least_squares_method(begin,end,time);
+    Eigen::Quaterniond correction_quaternion = raw_angle_quaternion.get_correction_quaternion_using_least_squares_method(begin,end,time,order);
 
     if(0)
     {
@@ -339,7 +343,7 @@ void manager::run()
             if(!raw_angle_quaternion.is_available_after(time_gyro_last_line)) continue;
 
             // MatrixPtr R2 = getR(time_gyro_center_line);
-            MatrixPtr R2 = getR_LMS(time_gyro_center_line,time_gyro_last_line-ros::Duration(2.0),time_gyro_last_line);
+            MatrixPtr R2 = getR_LMS(time_gyro_center_line,time_gyro_last_line-ros::Duration(lms_period_),time_gyro_last_line,lms_order_ );
             // double ratio = bisectionMethod(zoom_,R,camera_info_,0.0,1.0,1000,0.001);//TODO:zoomをなくす
             // ROS_INFO("ratio:%f",ratio);
             // std::cout << "ratio:" << ratio << std::endl << std::flush;

@@ -201,7 +201,7 @@ public:
     };
 
     void print_least_squares_method(const ros::Time &begin, const ros::Time &end);
-    Eigen::Quaterniond get_correction_quaternion_using_least_squares_method(const ros::Time &begin, const ros::Time &end, ros::Time &times);
+    Eigen::Quaterniond get_correction_quaternion_using_least_squares_method(const ros::Time &begin, const ros::Time &end, ros::Time &times, int order);
     
     void print_all()
     {
