@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(virtualgimbal_ros)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-add_compile_options(-std=c++11)
+add_compile_options(-std=c++11 -march=native)
 
 find_package(OpenCV 3 REQUIRED )
 
@@ -175,6 +175,9 @@ add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catk
 target_link_libraries(${PROJECT_NAME}_node
   ${catkin_LIBRARIES}  ${OpenCV_LIBS}
 )
+
+add_definitions(-DEIGEN_NO_DEBUG -DEIGEN_MPL2_ONLY)
+
 
 #############
 ## Install ##

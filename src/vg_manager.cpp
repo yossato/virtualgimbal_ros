@@ -5,7 +5,7 @@ namespace virtualgimbal
 {
 
 manager::manager() : pnh_("~"), image_transport_(nh_), q(1.0, 0, 0, 0), q_filtered(1.0, 0, 0, 0),
- last_vector(0, 0, 0), param(pnh_), publish_statistics(true),
+ last_vector(0, 0, 0), param(pnh_), publish_statistics(false),
  zoom_(1.3f),enable_black_space_removal_(true),cutoff_frequency_(0.5),enable_trimming_(true),
  offset_time_(ros::Duration(0.0)), lms_period_(2.0), lms_order_(2)
 {
@@ -129,15 +129,13 @@ MatrixPtr manager::getR_LMS(ros::Time time, const ros::Time begin, const ros::Ti
             throw;
         }
 
-        Eigen::Quaterniond q = correction_quaternion.conjugate() * raw;
-        // Eigen::Quaterniond q = raw * correction_quaternion.conjugate();
-        Eigen::Vector3d vec = Quaternion2Vector(q) * ratio;
-        Eigen::Quaterniond q2 = Vector2Quaternion<double>(vec );
+        // Eigen::Quaterniond q = correction_quaternion.conjugate() * raw;
+        // Eigen::Vector3d vec = Quaternion2Vector(q) * ratio;
+        // Eigen::Quaterniond q2 = Vector2Quaternion<double>(vec );
 
-        q2 = (correction_quaternion.conjugate() * raw).normalized();
-        // q2 = (raw * correction_quaternion.conjugate()).normalized();
+        Eigen::Quaterniond q2 = (correction_quaternion.conjugate() * raw).normalized();
 
-q2 = raw.conjugate() * q2 * raw;
+        q2 = (raw.conjugate() * q2 * raw).normalized();
 
         Eigen::Map<Eigen::Matrix<float, 3, 3, Eigen::RowMajor>>(&(*R)[row * 9], 3, 3) =
             q2.matrix().cast<float>();
@@ -435,6 +433,9 @@ void manager::run()
                 info.K[4] *= zoom_; // fy
                 info.P[0] *= zoom_; // fx
                 info.P[5] *= zoom_; // fy
+                info.width = image_width_dst;
+                info.height = image_height_dst;
+                //TODO : cx cyも直す
             }
             camera_publisher_.publish(*msg,info);
 

@@ -169,11 +169,11 @@ Eigen::Vector3d StampedDeque<Eigen::Vector3d>::get(ros::Time time)
 
         lsm_value = Vector2Quaternion<double>(lsm_vec) * origin;
 
-        {
-            int width = 640;
-            int height = 480;
+        if(1){
+            int width = 320;
+            int height = 240;
             cv::Mat plot_result_x = cv::Mat::zeros(height,width,CV_8UC3);//,plot_result_y,plot_result_z;
-            double gain = 500;
+            double gain = 250;
             for(int i=0;i<width;++i)
             {
                 
