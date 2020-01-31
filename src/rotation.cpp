@@ -198,7 +198,7 @@ Eigen::Vector3d StampedDeque<Eigen::Vector3d>::get(ros::Time time)
                 //                                                     coeff_y(0) + time(index) * coeff_y(1) + pow(time(index),2.0) * coeff_y(2),
                 //                                                     coeff_z(0) + time(index) * coeff_z(1) + pow(time(index),2.0) * coeff_z(2));
                 Eigen::Vector3d vec = Eigen::Vector3d(coeff_x(order),coeff_y(order),coeff_z(coeff_z.size()-1));
-                for(int n= order - 1; n>=0; --n)//★ここ
+                for(int n= order - 1; n>=0; --n)
                 {
                     vec = vec * time(index) + Eigen::Vector3d(coeff_x(n),coeff_y(n),coeff_z(n));
                 }

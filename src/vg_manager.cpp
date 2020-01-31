@@ -62,9 +62,18 @@ MatrixPtr manager::getR(ros::Time time, double ratio){
     
     assert(ratio >= 0.0);
     assert((ratio - 1.0) < std::numeric_limits<double>::epsilon());
+
+    int status = filtered_angle_quaternion.get(time, filtered);
+
+    if (DequeStatus::GOOD != status)
+    {
+        ROS_ERROR("Logic error at %s:%d",__FUNCTION__,__LINE__);
+        throw;
+    }
+
     for (int row = 0, e = camera_info_->height_; row < e; ++row)
     {
-        int status = raw_angle_quaternion.get(time + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)), raw);
+        status = raw_angle_quaternion.get(time + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)), raw);
 
         if (DequeStatus::GOOD != status)
         {
@@ -72,13 +81,13 @@ MatrixPtr manager::getR(ros::Time time, double ratio){
             throw;
         }
         // status = filtered_angle_quaternion.get(time + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)), filtered);
-        status = filtered_angle_quaternion.get(time, filtered);
+        // status = filtered_angle_quaternion.get(time, filtered);
 
-        if (DequeStatus::GOOD != status)
-        {
-            ROS_ERROR("Logic error at %s:%d",__FUNCTION__,__LINE__);
-            throw;
-        }
+        // if (DequeStatus::GOOD != status)
+        // {
+        //     ROS_ERROR("Logic error at %s:%d",__FUNCTION__,__LINE__);
+        //     throw;
+        // }
 
         Eigen::Quaterniond q = filtered.conjugate() * raw;
         Eigen::Vector3d vec = Quaternion2Vector(q) * ratio;
@@ -125,10 +134,10 @@ MatrixPtr manager::getR_LMS(ros::Time time, const ros::Time begin, const ros::Ti
         Eigen::Vector3d vec = Quaternion2Vector(q) * ratio;
         Eigen::Quaterniond q2 = Vector2Quaternion<double>(vec );
 
-        // q2 = (raw.conjugate() * q2 * raw).normalized();
-        // q2 = (raw.conjugate() * correction_quaternion.conjugate() * raw * raw).normalized();
         q2 = (correction_quaternion.conjugate() * raw).normalized();
         // q2 = (raw * correction_quaternion.conjugate()).normalized();
+
+q2 = raw.conjugate() * q2 * raw;
 
         Eigen::Map<Eigen::Matrix<float, 3, 3, Eigen::RowMajor>>(&(*R)[row * 9], 3, 3) =
             q2.matrix().cast<float>();
