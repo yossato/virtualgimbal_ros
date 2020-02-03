@@ -130,6 +130,12 @@ Eigen::Vector3d StampedDeque<Eigen::Vector3d>::get(ros::Time time)
         
         ros::Time standard_time = target_el->first;
         int num = std::distance(begin_el,end_el);
+
+        if(1 >= num)
+        {
+            return Eigen::Quaterniond(1.0,0,0,0);
+        }
+
         Eigen::Quaterniond origin = target_el->second;
 
         

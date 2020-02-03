@@ -109,7 +109,10 @@ MatrixPtr manager::getR_LMS(ros::Time time, const ros::Time begin, const ros::Ti
     assert(ratio >= 0.0);
     assert((ratio - 1.0) < std::numeric_limits<double>::epsilon());
 
+    // ros::Time adjusted_begin = end + (begin - end) * ratio;
+
     Eigen::Quaterniond correction_quaternion = raw_angle_quaternion.get_correction_quaternion_using_least_squares_method(begin,end,time,order);
+    
 
     if(0)
     {
@@ -129,11 +132,11 @@ MatrixPtr manager::getR_LMS(ros::Time time, const ros::Time begin, const ros::Ti
             throw;
         }
 
-        // Eigen::Quaterniond q = correction_quaternion.conjugate() * raw;
-        // Eigen::Vector3d vec = Quaternion2Vector(q) * ratio;
-        // Eigen::Quaterniond q2 = Vector2Quaternion<double>(vec );
+        Eigen::Quaterniond q = correction_quaternion.conjugate() * raw;
+        Eigen::Vector3d vec = Quaternion2Vector(q) * ratio;
+        Eigen::Quaterniond q2 = Vector2Quaternion<double>(vec).normalized();
 
-        Eigen::Quaterniond q2 = (correction_quaternion.conjugate() * raw).normalized();
+        // Eigen::Quaterniond q2 = (correction_quaternion.conjugate() * raw).normalized();
 
         q2 = (raw.conjugate() * q2 * raw).normalized();
 
@@ -351,10 +354,18 @@ void manager::run()
 
             // MatrixPtr R2 = getR(time_gyro_center_line);
             MatrixPtr R2 = getR_LMS(time_gyro_center_line,time_gyro_last_line-ros::Duration(lms_period_),time_gyro_last_line,lms_order_ );
-            // double ratio = bisectionMethod(zoom_,R,camera_info_,0.0,1.0,1000,0.001);//TODO:zoomをなくす
-            // ROS_INFO("ratio:%f",ratio);
+            double ratio = bisectionMethod(zoom_,R2,camera_info_,0.0,1.0,1000,0.001);//TODO:zoomをなくす
+            
+            if(ratio < (1.0 - std::numeric_limits<double>::epsilon()))
+            {
+                            // ROS_INFO("ratio:%f",ratio);
+            std::cout << "ratio:" << ratio << std::endl << std::flush;
+
+
+            }
             // std::cout << "ratio:" << ratio << std::endl << std::flush;
-            // R = getR(time_gyro_center_line,ratio);
+            // R2 = getR(time_gyro_center_line,ratio);
+            R2 = getR_LMS(time_gyro_center_line,time_gyro_last_line-ros::Duration(lms_period_),time_gyro_last_line,lms_order_ ,ratio);
 
             float ik1 = camera_info_->inverse_k1_;
             float ik2 = camera_info_->inverse_k2_;

@@ -136,31 +136,10 @@ void getUndistortUnrollingContour(
     contour.clear();
     std::vector<Eigen::Array2d, Eigen::aligned_allocator<Eigen::Array2d>> src_contour = getSparseContour(camera_info, 9);
     
-    // std::cout << "R" << std::endl;
-    // for(int i=0;i<10;++i){
-    //     Eigen::Quaterniond q(Eigen::Map<Eigen::Matrix<float, 3, 3, Eigen::RowMajor>>(&(*R)[i * 9], 3, 3).cast<double>());
-    //     Eigen::Vector3d vec = Quaternion2Vector(q) * ratio;
-    //     Eigen::Quaterniond q2 = Vector2Quaternion<double>(vec );
-        
-    //     std::cout << q2.coeffs().transpose() << std::endl;
-    // }
-
-    // std::cout << "src" << std::endl;
-    // for(auto el:src_contour){
-    //     std::cout << el.transpose() << std::endl;
-    // }
-    // Eigen::MatrixXd R;
     Eigen::Array2d x1;
     Eigen::Vector3d x3, xyz;
     for (auto &p : src_contour)
     {
-        // double time_in_row = time + line_delay * (p[1] - camera_info->height_ * 0.5);
-        // double frame_in_row = frame + (line_delay * (p[1] - camera_info->height_ * 0.5))
-        //     * video_param->getFrequency();   
-
-        // R = angular_velocity->getCorrectionQuaternionFromFrame(frame_in_row, filter_coeffs,sync_table).matrix();
-        // std::cout << "R:\r\n" << R << std::endl;
-        //↑
         x1 = (p - c) / f;
         double r = x1.matrix().norm();
         Eigen::Array2d x2 = x1 * (1.0 + ik1 * pow(r, 2.0) + ik2 * pow(r, 4.0));
@@ -176,28 +155,12 @@ void getUndistortUnrollingContour(
         Eigen::Quaterniond q(Eigen::Map<Eigen::Matrix<float, 3, 3, Eigen::RowMajor>>(&(*R)[std::round(p[1]) * 9], 3, 3).cast<double>());
         Eigen::Vector3d vec = Quaternion2Vector(q) * ratio;
         Eigen::Quaterniond q2 = Vector2Quaternion<double>(vec );
-        // std::cout << "at:" << p[1] << 
-        // "Mat:" << Eigen::Map<Eigen::Matrix<float, 3, 3, Eigen::RowMajor>>(&(*R)[(int)p[1] * 9], 3, 3) <<
-        // "q:" << q.coeffs().transpose() << "vec:" << vec.transpose() <<  " q2:" << q2.coeffs().transpose() << std::endl;
+
         xyz = q2.normalized().toRotationMatrix() * x3; // Use rotation matrix of each row.
         x2 << xyz[0] / xyz[2], xyz[1] / xyz[2];
         contour.push_back(x2 * f * zoom + c);
     }
-    // std::cout << "contour:" << std::endl;
-    // for(auto &el:contour){
-    //     std::cout << el.transpose() << std::endl;
-    // }
 }
-
-// bool hasBlackSpace(double zoom,
-//                    MatrixPtr R,
-//                    CameraInformationPtr camera_info)
-// {
-//     std::vector<Eigen::Array2d, Eigen::aligned_allocator<Eigen::Array2d>> contour;
-//     getUndistortUnrollingContour(R, contour, zoom, camera_info);
-//     return !isGoodWarp(contour,camera_info);
-// }
-
 
 
 double bisectionMethod(double zoom,
