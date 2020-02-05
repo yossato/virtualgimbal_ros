@@ -48,9 +48,6 @@ bool isGoodWarp(std::vector<Eigen::Array2d, Eigen::aligned_allocator<Eigen::Arra
 {
     for (const auto &p : contour)
     {
-        // if ((abs(contour[i]) < 1.0) && (abs(contour[i + 1]) < 1.0))
-        // std::cout << "p[0]:" << p[0] << std::endl;
-        // std::cout << "p[1]:" << p[1] << std::endl;
         if ((0. < p[0]) 
         && ( (camera_info->width_ - 1.) > p[0])
         && (0. < p[1])
@@ -62,11 +59,49 @@ bool isGoodWarp(std::vector<Eigen::Array2d, Eigen::aligned_allocator<Eigen::Arra
     return true;
 }
 
+std::vector<Eigen::Array2d, Eigen::aligned_allocator<Eigen::Array2d>> getSparseContourCos(CameraInformationPtr camera_info, int n)
+{
+    std::vector<Eigen::Array2d, Eigen::aligned_allocator<Eigen::Array2d>> contour;
+    Eigen::Array2d point;
+    double u_max = camera_info->width_ - 1.0;
+    double v_max = camera_info->height_ - 1.0;
+    // Top
+    for (int i = 0; i < n; ++i)
+    {
+        point << (cos((double)i / (double)(n-1) * M_PI) + 1.0) * 0.5  * u_max, 0.0;
+        contour.push_back(point);
+    }
+    // Bottom
+    for (int i = 0; i < n; ++i)
+    {
+        point << (cos((double)i / (double)(n-1) * M_PI) + 1.0) * 0.5 * u_max, v_max;
+        contour.push_back(point);
+    }
+
+    // Left
+    for (int i = 1; i < n - 1; ++i)
+    {
+        point << 0.0, (cos((double)i / (double)(n-1) * M_PI) + 1.0) * 0.5 * v_max;
+        contour.push_back(point);
+    }
+    // Right
+    for (int i = 0; i < n - 1; ++i)
+    {
+        point << u_max, (cos((double)i / (double)(n-1) * M_PI) + 1.0) * 0.5 * v_max;
+        contour.push_back(point);
+    }
+    // for(auto el:contour)
+    // {
+    //     std::cout << el.transpose() << std::endl;
+    // }
+    // std::cout << std::flush;
+    return contour;
+}
+
 std::vector<Eigen::Array2d, Eigen::aligned_allocator<Eigen::Array2d>> getSparseContour(CameraInformationPtr camera_info, int n)
 {
     std::vector<Eigen::Array2d, Eigen::aligned_allocator<Eigen::Array2d>> contour;
     Eigen::Array2d point;
-    Eigen::Array2d U_max;
     double u_max = camera_info->width_ - 1.0;
     double v_max = camera_info->height_ - 1.0;
     // Top
@@ -134,7 +169,8 @@ void getUndistortUnrollingContour(
     const double &ip2 = camera_info->inverse_p2_;
 
     contour.clear();
-    std::vector<Eigen::Array2d, Eigen::aligned_allocator<Eigen::Array2d>> src_contour = getSparseContour(camera_info, 9);
+    // std::vector<Eigen::Array2d, Eigen::aligned_allocator<Eigen::Array2d>> src_contour = getSparseContour(camera_info, 9);
+    std::vector<Eigen::Array2d, Eigen::aligned_allocator<Eigen::Array2d>> src_contour = getSparseContourCos(camera_info, 9);
     
     Eigen::Array2d x1;
     Eigen::Vector3d x3, xyz;
@@ -172,11 +208,6 @@ double bisectionMethod(double zoom,
 {
     std::vector<Eigen::Array2d, Eigen::aligned_allocator<Eigen::Array2d>> contour_a,contour_m;
     getUndistortUnrollingContour(1.0,R,contour_a,zoom,camera_info);
-// std::cout << "A0:" << std::endl;
-//         for(auto el:contour_a)
-//         {
-//             std::cout << el.transpose() << std::endl;
-//         }
 
     if(isGoodWarp(contour_a,camera_info))
     {
@@ -198,17 +229,6 @@ double bisectionMethod(double zoom,
         // 2. 二分法で計算する補正量を制限するパラメータを受け取り、補正後のスパースな輪郭を計算
         // 3. スパースな輪郭をhasBlackSpaceに渡して評価
 
-// std::cout << "A:" << std::endl;
-//         for(auto el:contour_a)
-//         {
-//             std::cout << el.transpose() << std::endl;
-//         }
-
-// std::cout << "M:" << std::endl;
-//         for(auto el:contour_m)
-//         {
-//             std::cout << el.transpose() << std::endl;
-//         }
 
         if (isGoodWarp(contour_a,camera_info) ^ isGoodWarp(contour_m,camera_info))
         {

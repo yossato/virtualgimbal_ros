@@ -359,12 +359,9 @@ void manager::run()
             if(ratio < (1.0 - std::numeric_limits<double>::epsilon()))
             {
                             // ROS_INFO("ratio:%f",ratio);
-            std::cout << "ratio:" << ratio << std::endl << std::flush;
-
-
+                std::cout << "ratio:" << ratio << std::endl;
             }
-            // std::cout << "ratio:" << ratio << std::endl << std::flush;
-            // R2 = getR(time_gyro_center_line,ratio);
+
             R2 = getR_LMS(time_gyro_center_line,time_gyro_last_line-ros::Duration(lms_period_),time_gyro_last_line,lms_order_ ,ratio);
 
             float ik1 = camera_info_->inverse_k1_;

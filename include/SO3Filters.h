@@ -17,12 +17,14 @@ using MatrixPtr = std::shared_ptr<std::vector<float>>;
 
 bool isGoodWarp(std::vector<Eigen::Array2d, Eigen::aligned_allocator<Eigen::Array2d>> &contour, CameraInformationPtr camera_info);
 std::vector<Eigen::Array2d, Eigen::aligned_allocator<Eigen::Array2d>> getSparseContour(CameraInformationPtr camera_info, int n);
+std::vector<Eigen::Array2d, Eigen::aligned_allocator<Eigen::Array2d>> getSparseContourCos(CameraInformationPtr camera_info, int n);
 void getUndistortUnrollingContour(
     // int frame,
     MatrixPtr R,
     std::vector<Eigen::Array2d, Eigen::aligned_allocator<Eigen::Array2d>> &contour,
     double zoom,
     CameraInformationPtr camera_info);
+    
 // Eigen::VectorXd getKaiserWindow(uint32_t tap_length, uint32_t alpha, bool swap);
 
 // bool hasBlackSpace(double zoom,
