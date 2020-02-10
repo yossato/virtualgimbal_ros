@@ -1,5 +1,5 @@
 #pragma OPENCL EXTENSION cl_khr_fp64: enable
-__constant sampler_t samplerLN = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP_TO_EDGE | CLK_FILTER_LINEAR;
+__constant sampler_t samplerLN = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP_TO_EDGE | CLK_FILTER_NEAREST;
 
 
 
@@ -116,7 +116,18 @@ __kernel void stabilizer_function(
    int2 size_src = get_image_dim(input);
    int2 size_dst = (int2)(output_cols,output_rows);//get_image_dim(output);
 
-   float2 uv = convert_float2((int2)(get_global_id(0),get_global_id(1)));
+   int2 uvi = (int2)(get_global_id(0),get_global_id(1));
+   float2 uv = convert_float2(convert_int2(uvi));
+
+   if(uvi.y >= (size_src.y-1))
+   {
+      return;
+   }
+   if(uvi.x >= (size_src.x-1))
+   {
+      return;
+   }
+
    float2 f = (float2)(fx,fy);
    float2 c = (float2)(cx,cy);
 
@@ -154,9 +165,7 @@ __kernel void stabilizer_function(
             continue;
          }
          uint4 pixel = read_imageui(input, samplerLN, uw_cam);
-         // write_imageui(output, uvt, pixel);
-         // int output_index = mad24(uvt.y, output_step, mad24(uvt.x, (int)sizeof(uchar4), dst_offset));
-         // __global uchar4 *dstf = (__global uchar4 *)(output + output_index);
+         
          int output_index = mad24(uvt.y, output_cols, uvt.x);
          __global uchar4 *p_out = (__global uchar4 *)(output + output_index);
          *p_out = convert_uchar4(pixel);

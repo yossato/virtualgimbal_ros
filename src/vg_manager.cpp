@@ -344,7 +344,8 @@ void manager::run()
 
             // Get time stamp of center row of the image
             ros::Time time_image_center_line;
-            src_image.get(time_image_request,time_image_center_line);
+            src_image.get(time_image_request,time_image_center_line);////??????????????/
+            
             
             // Check availability of gyro angle data at the time stamp of the last row of the image
             auto time_gyro_last_line = time_image_center_line + half_height_delay - offset_time_;
@@ -356,13 +357,15 @@ void manager::run()
             MatrixPtr R2 = getR_LMS(time_gyro_center_line,time_gyro_last_line-ros::Duration(lms_period_),time_gyro_last_line,lms_order_ );
             double ratio = bisectionMethod(zoom_,R2,camera_info_,0.0,1.0,1000,0.001);//TODO:zoomをなくす
             
-            if(ratio < (1.0 - std::numeric_limits<double>::epsilon()))
-            {
-                            // ROS_INFO("ratio:%f",ratio);
-                std::cout << "ratio:" << ratio << std::endl;
-            }
+            if(1){
+                if(ratio < (1.0 - std::numeric_limits<double>::epsilon()))
+                {
+                                // ROS_INFO("ratio:%f",ratio);
+                    std::cout << "ratio:" << ratio << std::endl;
+                }
 
-            R2 = getR_LMS(time_gyro_center_line,time_gyro_last_line-ros::Duration(lms_period_),time_gyro_last_line,lms_order_ ,ratio);
+                R2 = getR_LMS(time_gyro_center_line,time_gyro_last_line-ros::Duration(lms_period_),time_gyro_last_line,lms_order_ ,ratio);
+            }
 
             float ik1 = camera_info_->inverse_k1_;
             float ik2 = camera_info_->inverse_k2_;
@@ -376,6 +379,7 @@ void manager::run()
 
             ros::Time time;
             auto image = src_image.get(time_image_center_line,time);
+
 
             // Define destinatino image 
             int image_width_dst,image_height_dst;
