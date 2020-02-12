@@ -161,6 +161,13 @@ src/angular_velocity_estimator.cpp
 src/least_squares_method.cpp
 )
 
+add_executable(synchronizer_node src/sync_main.cpp
+src/synchronization_manager.cpp
+src/angular_velocity_estimator.cpp
+src/rotation.cpp
+src/least_squares_method.cpp
+)
+
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
@@ -170,11 +177,17 @@ src/least_squares_method.cpp
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(synchronizer_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}_node
   ${catkin_LIBRARIES}  ${OpenCV_LIBS}
 )
+
+target_link_libraries(synchronizer_node
+  ${catkin_LIBRARIES}  ${OpenCV_LIBS}
+)
+
 
 add_definitions(-DEIGEN_NO_DEBUG -DEIGEN_MPL2_ONLY)
 

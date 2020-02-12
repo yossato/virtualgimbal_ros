@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<launch>
+    <node name="virtualgimbal" pkg="virtualgimbal_ros" type="synchronizer_node" output="screen">
+        <param name="image" value="/camera/color/image_raw"/>
+        <param name="imu_data" value="/camera/gyro/sample"/>
+        <param name="maximum_offset_time" value="0.5"/>
+        <param name="correlation_time" value="15.0"/>
+    </node>
+</launch>

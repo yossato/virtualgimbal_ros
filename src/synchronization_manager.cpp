@@ -4,22 +4,20 @@ namespace virtualgimbal
 
 
 
-synchronization_manager::synchronization_manager() : pnh_("~"), image_transport_(nh_), auto_sync_(false)
+synchronization_manager::synchronization_manager() : pnh_("~"), image_transport_(nh_)
 {
     std::string image = "/image";
     std::string imu_data = "/imu_data";
     pnh_.param("image", image, image);
     pnh_.param("imu_data", imu_data, imu_data);
     
-    double offset_time_double = 0.5;
-    pnh_.param("sad_time_diff", offset_time_double, offset_time_double);
-    offset_time = ros::Duration(offset_time_double);
+    double maximum_offset_time = 0.5;
+    pnh_.param("maximum_offset_time", maximum_offset_time, maximum_offset_time);
+    offset_time = ros::Duration(maximum_offset_time);
 
-    pnh_.param("auto_sync",auto_sync_,auto_sync_);
-
-    double sad_time_length_double = 5.0;
-    pnh_.param("sad_period",sad_time_length_double,sad_time_length_double);
-    sad_time_length =  ros::Duration(sad_time_length_double);
+    double correlation_time = 5.0;
+    pnh_.param("correlation_time",correlation_time,correlation_time);
+    sad_time_length =  ros::Duration(correlation_time);
 
     ROS_INFO("image topic is %s", image.c_str());
     ROS_INFO("imu_data topic is %s", imu_data.c_str());
@@ -78,16 +76,6 @@ void synchronization_manager::imu_callback(const sensor_msgs::Imu::ConstPtr &msg
 
 double synchronization_manager::estimate_offset_time()
 {
-    if(!auto_sync_)
-    {
-        ROS_INFO("Auto sync is disabled");
-        return 0.0;
-    }
-    else
-    {
-        ROS_INFO("Auto sync is enabled.");
-    }
-    
 
     // 推定角速度と、IMUデータが十分な数貯まるまで待つ
     // データが十分に溜まったら、計算
@@ -140,7 +128,7 @@ double synchronization_manager::estimate_offset_time()
         // すべてのオフセットについて
         double min_sad = std::numeric_limits<double>::max();
         ros::Duration period(0.033); //とりあえず33msに指定
-        for(ros::Duration dt = -offset_time; dt < offset_time; dt+= ros::Duration(0.001))
+        for(ros::Duration dt = -offset_time; dt < offset_time; dt+= ros::Duration(0.0001))
         {
             // すべてのフレームについて
             
