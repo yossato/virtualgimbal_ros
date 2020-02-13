@@ -1,9 +1,14 @@
 <?xml version="1.0"?>
 <launch>
+    <arg name="image"                  default="/camera/color/image_raw"/>
+    <arg name="imu"                     default="/camera/gyro/sample"/>
+    <arg name="maximum_offset_time"   default="0.5"/>
+    <arg name="correlation_time"      default="15.0"/>
+
     <node name="virtualgimbal" pkg="virtualgimbal_ros" type="synchronizer_node" output="screen">
-        <param name="image" value="/camera/color/image_raw"/>
-        <param name="imu_data" value="/camera/gyro/sample"/>
-        <param name="maximum_offset_time" value="0.5"/>
-        <param name="correlation_time" value="15.0"/>
+        <param name="image" value="$(arg image)"/>
+        <param name="imu_data" value="$(arg imu)"/>
+        <param name="maximum_offset_time" value="$(arg maximum_offset_time)"/>
+        <param name="correlation_time" value="$(arg correlation_time)"/>
     </node>
 </launch>

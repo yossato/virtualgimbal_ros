@@ -122,6 +122,8 @@ double synchronization_manager::estimate_offset_time()
             back_time = measured_back_time;
         }
         
+        ROS_INFO_THROTTLE(1,"Loading images and angular velocities, %2.1f %% completed.", 100.f*((back_time-front_time).toSec()/(offset_time * 2.0 +sad_time_length).toSec()));
+
         // 十分な長さがあるか調べる
         if(back_time-front_time < (offset_time * 2.0 +sad_time_length)) continue;
 
