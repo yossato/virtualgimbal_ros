@@ -1,4 +1,3 @@
-#include "ros/ros.h"
 #include "vg_manager.h"
 
 namespace virtualgimbal
@@ -301,8 +300,9 @@ ros::Time manager::get_end_time(ros::Time time)
 
 void manager::run()
 {
-
-    const char *kernel_name = "cl/stabilizer_kernel.cl";
+    std::string kernel_path = ros::package::getPath("virtualgimbal_ros")+"/cl/stabilizer_kernel.cl";
+    ROS_INFO("kernel path:%s",  kernel_path.c_str());
+    // const char *kernel_name = "cl/stabilizer_kernel.cl";
     const char *kernel_function = "stabilizer_function";
 
     ros::Rate rate(120);
@@ -420,7 +420,7 @@ void manager::run()
             cv::Mat mat_R = cv::Mat(R2->size(), 1, CV_32F, R2->data());
             cv::UMat umat_R = mat_R.getUMat(cv::ACCESS_READ, cv::USAGE_ALLOCATE_DEVICE_MEMORY);
             cv::ocl::Kernel kernel;
-            getKernel(kernel_name, kernel_function, kernel, context, build_opt);
+            getKernel(kernel_path.c_str(), kernel_function, kernel, context, build_opt);
             kernel.args(image_src, cv::ocl::KernelArg::WriteOnly(*umat_dst_ptr), cv::ocl::KernelArg::ReadOnlyNoSize(umat_R),ik1,ik2,ip1,ip2,fx,fy,cx,cy,fx_dst,fy_dst,cx_dst,cy_dst);
             size_t globalThreads[3] = {(size_t)image.cols, (size_t)image.rows, 1};
             //size_t localThreads[3] = { 16, 16, 1 };

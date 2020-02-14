@@ -2,6 +2,7 @@
 #define __VIRTUALGIMAL_ROS_VG_MANAGER_H__
 
 #include "ros/ros.h"
+#include <ros/package.h>
 #include "sensor_msgs/Image.h"
 #include "sensor_msgs/CameraInfo.h"
 #include "sensor_msgs/Imu.h"
