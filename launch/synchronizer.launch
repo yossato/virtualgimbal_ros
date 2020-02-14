@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
-    <arg name="image"                   default="/camera/color/image_raw"/>
-    <arg name="imu_data"                     default="/camera/gyro/sample"/>
+    <arg name="image"                   default="/image"/>
+    <arg name="imu_data"                default="/imu_data"/>
     <arg name="maximum_offset_time"     default="0.5"/>
     <arg name="correlation_time"        default="15.0"/>
 

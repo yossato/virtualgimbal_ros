@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<launch>
+    <include file="$(find virtualgimbal_ros)/launch/synchronizer.launch">
+        <arg name="image"                   default="/camera/color/image_raw"/>
+        <arg name="imu_data"                default="/camera/gyro/sample"/>
+        <arg name="maximum_offset_time"     default="0.5"/>
+        <arg name="correlation_time"        default="15.0"/>
+    </include>
+</launch>
