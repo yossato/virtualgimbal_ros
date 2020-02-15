@@ -9,5 +9,6 @@
         <arg name="offset_time"     value="0.005300"/>
         <arg name="lsm_order"       value="2"/>
         <arg name="lsm_period"      value="1.5"/>
+        <arg name="verbose"         value="false"/> <!-- For Debug -->
     </include>
 </launch>

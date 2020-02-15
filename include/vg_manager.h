@@ -80,7 +80,7 @@ private:
     cv::String build_opt;
 
     // Debug
-    bool publish_statistics;
+    bool verbose;
 
     // LMS
     double lms_period_;

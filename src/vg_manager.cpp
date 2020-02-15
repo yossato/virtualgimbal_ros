@@ -4,9 +4,9 @@ namespace virtualgimbal
 {
 
 manager::manager() : pnh_("~"), image_transport_(nh_), q(1.0, 0, 0, 0), q_filtered(1.0, 0, 0, 0),
- last_vector(0, 0, 0), param(pnh_), publish_statistics(false),
+ last_vector(0, 0, 0), param(pnh_),
  zoom_(1.3f),enable_black_space_removal_(true),cutoff_frequency_(0.5),enable_trimming_(true),
- offset_time_(ros::Duration(0.0)), lms_period_(2.0), lms_order_(2)
+ offset_time_(ros::Duration(0.0)), verbose(false), lms_period_(2.0), lms_order_(2)
 {
     std::string image = "/image";
     std::string imu_data = "/imu_data";
@@ -29,6 +29,8 @@ manager::manager() : pnh_("~"), image_transport_(nh_), q(1.0, 0, 0, 0), q_filter
     pnh_.param("offset_time",offset_time_double,offset_time_double);
     offset_time_ = ros::Duration(offset_time_double);
 
+    pnh_.param("verbose",verbose,verbose);
+
     pnh_.param("lsm_period",lms_period_,lms_period_);
     pnh_.param("lsm_order",lms_order_,lms_order_);
 
@@ -45,6 +47,8 @@ manager::manager() : pnh_("~"), image_transport_(nh_), q(1.0, 0, 0, 0), q_filter
 
     raw_quaternion_queue_size_pub = pnh_.advertise<std_msgs::Float64>("raw_quaternion_queue_size", 10);
     filtered_quaternion_queue_size_pub = pnh_.advertise<std_msgs::Float64>("filtered_quaternion_queue_size", 10);
+
+    raw_angle_quaternion = Rotation(verbose);
 
     // OpenCL
     initializeCL(context);
@@ -315,7 +319,7 @@ void manager::run()
         if(!camera_info_) continue;
 
         // Show debug information
-        if (publish_statistics)
+        if (verbose)
         {
             std_msgs::Float64 msg;
             msg.data = (double)raw_angle_quaternion.size();
@@ -357,7 +361,7 @@ void manager::run()
             MatrixPtr R2 = getR_LMS(time_gyro_center_line,time_gyro_last_line-ros::Duration(lms_period_),time_gyro_last_line,lms_order_ );
             double ratio = bisectionMethod(zoom_,R2,camera_info_,0.0,1.0,1000,0.001);//TODO:zoomをなくす
             
-            if(1){
+            if(verbose){
                 if(ratio < (1.0 - std::numeric_limits<double>::epsilon()))
                 {
                                 // ROS_INFO("ratio:%f",ratio);

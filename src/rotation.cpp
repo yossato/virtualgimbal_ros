@@ -13,7 +13,7 @@ namespace virtualgimbal
 template <>
 int StampedDeque<Eigen::Quaterniond>::get(ros::Time time, Eigen::Quaterniond &q)
 {
-    constexpr bool verbose = false; // FOR DEBUG
+    // constexpr bool verbose = false; // FOR DEBUG
     // std::cout << "Specialized" << std::endl;
     if(data.empty())
     {
@@ -23,39 +23,11 @@ int StampedDeque<Eigen::Quaterniond>::get(ros::Time time, Eigen::Quaterniond &q)
     if (data.begin() == it)
     {
         q = data.front().second;
-
-        if (verbose)
-        {
-            ROS_INFO("Input time : %d.%d", time.sec, time.nsec);
-            ROS_INFO("Size of data:%lu", data.size());
-
-            ROS_INFO("Data time begin:  %d.%d", data.front().first.sec, data.front().first.nsec);
-            ROS_INFO("Data time end: %d.%d", data.back().first.sec, data.back().first.nsec);
-            for (int i = 0; i < data.size(); ++i)
-            {
-                printf("%d:%d.%d\r\n", i, data[i].first.sec, data[i].first.nsec);
-            }
-        }
-
         return DequeStatus::TIME_STAMP_IS_EARLIER_THAN_FRONT;
     }
     else if (data.end() == it)
     {
         q = data.back().second;
-
-        if (verbose)
-        {
-            ROS_INFO("Input time : %d.%d", time.sec, time.nsec);
-            ROS_INFO("Size of data:%lu", data.size());
-
-            ROS_INFO("Data time begin:  %d.%d", data.front().first.sec, data.back().first.nsec);
-            ROS_INFO("Data time end: %d.%d", data.front().first.sec, data.back().first.nsec);
-            for (int i = 0; i < data.size(); ++i)
-            {
-                printf("%d:%d.%d\r\n", i, data[i].first.sec, data[i].first.nsec);
-            }
-        }
-
         return DequeStatus::TIME_STAMP_IS_LATER_THAN_BACK;
     }
     else
@@ -175,7 +147,7 @@ Eigen::Vector3d StampedDeque<Eigen::Vector3d>::get(ros::Time time)
 
         lsm_value = Vector2Quaternion<double>(lsm_vec) * origin;
 
-        if(1){
+        if(verbose){
             int width = 320;
             int height = 240;
             cv::Mat plot_result_x = cv::Mat::zeros(height,width,CV_8UC3);//,plot_result_y,plot_result_z;

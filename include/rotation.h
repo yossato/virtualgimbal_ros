@@ -24,7 +24,8 @@ class StampedDeque
 public:
 
 
-    StampedDeque(){};
+    StampedDeque(bool verbose = false) : verbose(verbose) 
+    {};
 
     void clear()
     {
@@ -212,6 +213,7 @@ public:
 
 private:
     std::deque<std::pair<ros::Time, T>> data;
+    bool verbose;
 };
 
 
