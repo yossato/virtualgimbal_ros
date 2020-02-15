@@ -81,6 +81,7 @@ private:
 
     // Debug
     bool verbose;
+    bool allow_blue_space;
 
     // LMS
     double lms_period_;

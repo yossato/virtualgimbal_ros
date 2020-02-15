@@ -8,7 +8,8 @@
     <arg name="offset_time"     default="0.0"/>
     <arg name="lsm_order"       default="2"/>
     <arg name="lsm_period"      default="1.5"/>
-    <arg name="verbose"          default="false"/> <!-- For Debug -->
+    <arg name="verbose"         default="false"/> <!-- For Debug -->
+    <arg name="allow_blue_space" default="false"/>
 
     <node name="virtualgimbal" pkg="virtualgimbal_ros" type="virtualgimbal_ros_node" output="screen">
         <param name="image"             value="$(arg image)"/>
@@ -19,6 +20,7 @@
         <param name="offset_time"       value="$(arg offset_time)"/>
         <param name="lsm_order"         value="$(arg lsm_order)"/>
         <param name="lsm_period"        value="$(arg lsm_period)"/>
-        <param name="verbose"            value="$(arg verbose)"/>
+        <param name="verbose"           value="$(arg verbose)"/>
+        <param name="allow_blue_space"  value="$(arg allow_blue_space)"/>
     </node>
 </launch>

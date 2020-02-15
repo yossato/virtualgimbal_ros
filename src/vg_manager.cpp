@@ -6,7 +6,7 @@ namespace virtualgimbal
 manager::manager() : pnh_("~"), image_transport_(nh_), q(1.0, 0, 0, 0), q_filtered(1.0, 0, 0, 0),
  last_vector(0, 0, 0), param(pnh_),
  zoom_(1.3f),enable_black_space_removal_(true),cutoff_frequency_(0.5),enable_trimming_(true),
- offset_time_(ros::Duration(0.0)), verbose(false), lms_period_(2.0), lms_order_(2)
+ offset_time_(ros::Duration(0.0)), verbose(false), allow_blue_space(false), lms_period_(2.0), lms_order_(2)
 {
     std::string image = "/image";
     std::string imu_data = "/imu_data";
@@ -30,6 +30,7 @@ manager::manager() : pnh_("~"), image_transport_(nh_), q(1.0, 0, 0, 0), q_filter
     offset_time_ = ros::Duration(offset_time_double);
 
     pnh_.param("verbose",verbose,verbose);
+    pnh_.param("allow_blue_space",allow_blue_space,allow_blue_space);
 
     pnh_.param("lsm_period",lms_period_,lms_period_);
     pnh_.param("lsm_order",lms_order_,lms_order_);
@@ -320,7 +321,7 @@ void manager::run()
 
             // Get time stamp of center row of the image
             ros::Time time_image_center_line;
-            src_image.get(time_image_request,time_image_center_line);////??????????????/
+            auto image = src_image.get(time_image_request,time_image_center_line);////??????????????/
             
             
             // Check availability of gyro angle data at the time stamp of the last row of the image
@@ -331,18 +332,19 @@ void manager::run()
 
             // MatrixPtr R2 = getR(time_gyro_center_line);
             MatrixPtr R2 = getR_LMS(time_gyro_center_line,time_gyro_last_line-ros::Duration(lms_period_),time_gyro_last_line,lms_order_ );
-            double ratio = bisectionMethod(zoom_,R2,camera_info_,0.0,1.0,1000,0.001);//TODO:zoomをなくす
-            
-            if(verbose){
+            if(!allow_blue_space)
+            {
+                double ratio = bisectionMethod(zoom_,R2,camera_info_,0.0,1.0,1000,0.001);//TODO:zoomをなくす
                 if(ratio < (1.0 - std::numeric_limits<double>::epsilon()))
                 {
-                                // ROS_INFO("ratio:%f",ratio);
-                    std::cout << "ratio:" << ratio << std::endl;
+                    if(verbose){
+                        std::cout << "ratio:" << ratio << std::endl;
+                    }
+                    R2 = getR_LMS(time_gyro_center_line,time_gyro_last_line-ros::Duration(lms_period_),time_gyro_last_line,lms_order_ ,ratio);
                 }
-
-                
             }
-            // R2 = getR_LMS(time_gyro_center_line,time_gyro_last_line-ros::Duration(lms_period_),time_gyro_last_line,lms_order_ ,ratio);
+
+            
 
             float ik1 = camera_info_->inverse_k1_;
             float ik2 = camera_info_->inverse_k2_;
@@ -354,8 +356,8 @@ void manager::run()
             float cy = camera_info_->cy_;
             // float zoom = 1.f;
 
-            ros::Time time;
-            auto image = src_image.get(time_image_center_line,time);
+            // ros::Time time;
+            // auto image = src_image.get(time_image_center_line,time);
 
 
             // Define destinatino image 
@@ -411,7 +413,7 @@ void manager::run()
 
             sensor_msgs::ImagePtr msg = cv_bridge::CvImage(ros_camera_info_->header,"bgra8",umat_dst_ptr->getMat(cv::ACCESS_READ)).toImageMsg();
             sensor_msgs::CameraInfo info = *ros_camera_info_;
-            info.header.stamp = time;
+            info.header.stamp = time_image_center_line;
             if(enable_trimming_)
             {
 

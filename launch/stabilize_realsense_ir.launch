@@ -7,8 +7,9 @@
         <arg name="enable_trimming" value="true"/>
         <arg name="line_delay"      value="0.00000"/>
         <arg name="offset_time"     value="0.033700"/>
-        <arg name="lsm_order"       value="2"/>
+        <arg name="lsm_order"       value="1"/>                     <!-- 1,2 and 3 are good. -->
         <arg name="lsm_period"      value="1.5"/>
         <arg name="verbose"         value="false"/> <!-- For Debug -->
+        <arg name="allow_blue_space" value="false"/>
     </include>
 </launch>
