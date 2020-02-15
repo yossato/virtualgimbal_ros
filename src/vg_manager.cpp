@@ -8,7 +8,7 @@ manager::manager() : pnh_("~"), image_transport_(nh_), q(1.0, 0, 0, 0), q_filter
  zoom_(1.3f),enable_black_space_removal_(true),cutoff_frequency_(0.5),enable_trimming_(true),
  offset_time_(ros::Duration(0.0)), verbose(false), allow_blue_space(false), lms_period_(2.0), lms_order_(2)
 {
-    std::string image = "/image";
+    std::string image = "/image_rect";
     std::string imu_data = "/imu_data";
     pnh_.param("image", image, image);
     pnh_.param("imu_data", imu_data, imu_data);
@@ -37,14 +37,14 @@ manager::manager() : pnh_("~"), image_transport_(nh_), q(1.0, 0, 0, 0), q_filter
 
     camera_subscriber_ = image_transport_.subscribeCamera(image, 100, &manager::callback, this);
     imu_subscriber_ = pnh_.subscribe(imu_data, 10000, &manager::imu_callback, this);
-    pub_ = image_transport_.advertise("camera/image", 1);
+    // pub_ = image_transport_.advertise("camera/image", 1);
 
     camera_publisher_ = image_transport_.advertiseCamera("camera/stabilized/image_rect",1);
 
-    raw_quaternion_pub              = pnh_.advertise<sensor_msgs::Imu>("angle/raw", 1000);
-    filtered_quaternion_pub         = pnh_.advertise<sensor_msgs::Imu>("angle/filtered", 1000);
-    estimated_angular_velocity_pub  = pnh_.advertise<sensor_msgs::Imu>("angular_velocity/estimate",1000);
-    measured_augular_velocity_pub   = pnh_.advertise<sensor_msgs::Imu>("angular_velocity/measured",1000);
+    // raw_quaternion_pub              = pnh_.advertise<sensor_msgs::Imu>("angle/raw", 1000);
+    // filtered_quaternion_pub         = pnh_.advertise<sensor_msgs::Imu>("angle/filtered", 1000);
+    // estimated_angular_velocity_pub  = pnh_.advertise<sensor_msgs::Imu>("angular_velocity/estimate",1000);
+    // measured_augular_velocity_pub   = pnh_.advertise<sensor_msgs::Imu>("angular_velocity/measured",1000);
 
     raw_quaternion_queue_size_pub = pnh_.advertise<std_msgs::Float64>("raw_quaternion_queue_size", 10);
     filtered_quaternion_queue_size_pub = pnh_.advertise<std_msgs::Float64>("filtered_quaternion_queue_size", 10);
@@ -175,8 +175,8 @@ void manager::callback(const sensor_msgs::ImageConstPtr &image, const sensor_msg
     // ROS_INFO("src_image.size():%lu",src_image.size());
 
     //publish image
-    sensor_msgs::ImagePtr msg = cv_bridge::CvImage(image->header, "bgr8", umat_src.getMat(cv::ACCESS_READ)).toImageMsg();
-    pub_.publish(msg);
+    // sensor_msgs::ImagePtr msg = cv_bridge::CvImage(image->header, "bgr8", umat_src.getMat(cv::ACCESS_READ)).toImageMsg();
+    // pub_.publish(msg);
     image_previous = image;
 }
 
@@ -223,20 +223,20 @@ void manager::imu_callback(const sensor_msgs::Imu::ConstPtr &msg)
 
         last_vector = vec;
 
-        sensor_msgs::Imu angle_raw, angle_filtered;
-        angle_raw.header = msg->header;
-        angle_raw.orientation.w = q.w();
-        angle_raw.orientation.x = q.x();
-        angle_raw.orientation.y = q.y();
-        angle_raw.orientation.z = q.z();
-        raw_quaternion_pub.publish(angle_raw);
+        // sensor_msgs::Imu angle_raw, angle_filtered;
+        // angle_raw.header = msg->header;
+        // angle_raw.orientation.w = q.w();
+        // angle_raw.orientation.x = q.x();
+        // angle_raw.orientation.y = q.y();
+        // angle_raw.orientation.z = q.z();
+        // raw_quaternion_pub.publish(angle_raw);
 
-        angle_filtered.header = msg->header;
-        angle_filtered.orientation.w = q_filtered.w();
-        angle_filtered.orientation.x = q_filtered.x();
-        angle_filtered.orientation.y = q_filtered.y();
-        angle_filtered.orientation.z = q_filtered.z();
-        filtered_quaternion_pub.publish(angle_filtered);
+        // angle_filtered.header = msg->header;
+        // angle_filtered.orientation.w = q_filtered.w();
+        // angle_filtered.orientation.x = q_filtered.x();
+        // angle_filtered.orientation.y = q_filtered.y();
+        // angle_filtered.orientation.z = q_filtered.z();
+        // filtered_quaternion_pub.publish(angle_filtered);
 
         raw_angle_quaternion.push_back(msg->header.stamp, q);
         filtered_angle_quaternion.push_back(msg->header.stamp, q_filtered);

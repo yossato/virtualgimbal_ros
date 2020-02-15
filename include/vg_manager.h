@@ -45,12 +45,12 @@ private:
     image_transport::CameraSubscriber camera_subscriber_;
     image_transport::CameraPublisher camera_publisher_;
     ros::Subscriber imu_subscriber_;
-    image_transport::Publisher pub_ ;
+    // image_transport::Publisher pub_ ;
     Eigen::Quaterniond q,q_filtered;
     sensor_msgs::Imu::ConstPtr imu_previous = nullptr;
     sensor_msgs::ImageConstPtr image_previous = nullptr;
-    ros::Publisher raw_quaternion_pub,filtered_quaternion_pub,estimated_angular_velocity_pub,measured_augular_velocity_pub,
-    raw_quaternion_queue_size_pub,filtered_quaternion_queue_size_pub;  
+    // ros::Publisher raw_quaternion_pub,filtered_quaternion_pub,estimated_angular_velocity_pub,measured_augular_velocity_pub,
+    ros::Publisher raw_quaternion_queue_size_pub,filtered_quaternion_queue_size_pub;  
     Eigen::Vector3d last_vector;
     MatrixPtr getR(ros::Time time, double ratio=1.0);
     MatrixPtr getR_LMS(ros::Time time, const ros::Time begin, const ros::Time end, int order, double ratio=1.0);
