@@ -11,32 +11,27 @@ namespace virtualgimbal
 
 // Template specialization for Eigen::Quaterniond
 template <>
-int StampedDeque<Eigen::Quaterniond>::get(ros::Time time, Eigen::Quaterniond &q)
+Eigen::Quaterniond StampedDeque<Eigen::Quaterniond>::get_interpolate(ros::Time time)
 {
-    // constexpr bool verbose = false; // FOR DEBUG
-    // std::cout << "Specialized" << std::endl;
     if(data.empty())
     {
-        return DequeStatus::EMPTY;
+        throw;
     }
     auto it = std::find_if(data.begin(), data.end(), [&](std::pair<ros::Time, Eigen::Quaterniond> x) { return time < x.first; });
     if (data.begin() == it)
     {
-        q = data.front().second;
-        return DequeStatus::TIME_STAMP_IS_EARLIER_THAN_FRONT;
+        throw;
     }
     else if (data.end() == it)
     {
-        q = data.back().second;
-        return DequeStatus::TIME_STAMP_IS_LATER_THAN_BACK;
+        throw;
     }
     else
     {
         // Slerp, Interpolation of quaternion.
         auto pit = it - 1;
         double a = (time - pit->first).toSec() / (it->first - pit->first).toSec();
-        q = pit->second.slerp(a, it->second);
-        return DequeStatus::GOOD;
+        return pit->second.slerp(a, it->second);
     }
 };
 template <>
@@ -97,10 +92,11 @@ Eigen::Vector3d StampedDeque<Eigen::Vector3d>::get(ros::Time time)
     Eigen::Quaterniond StampedDeque<Eigen::Quaternion<double>>::get_correction_quaternion_using_least_squares_method(const ros::Time &begin, const ros::Time &end, ros::Time &target,int order)
     {
         auto begin_el   = std::find_if(data.begin(),data.end(),[&begin](std::pair<ros::Time, Eigen::Quaterniond> x) { return begin < x.first; });
-        auto target_el  = std::find_if(data.begin(),data.end(),[&target](std::pair<ros::Time, Eigen::Quaterniond> x) { return target < x.first; });
+        // auto target_el  = std::find_if(data.begin(),data.end(),[&target](std::pair<ros::Time, Eigen::Quaterniond> x) { return target < x.first; });
+        Eigen::Quaterniond target_angle = get_interpolate(target);
         auto end_el     = std::find_if(data.begin(),data.end(),[&end](std::pair<ros::Time, Eigen::Quaterniond> x) { return end < x.first; });
         
-        ros::Time standard_time = target_el->first;
+        ros::Time standard_time = target;
         int num = std::distance(begin_el,end_el);
 
         if(1 >= num)
@@ -108,7 +104,7 @@ Eigen::Vector3d StampedDeque<Eigen::Vector3d>::get(ros::Time time)
             return Eigen::Quaterniond(1.0,0,0,0);
         }
 
-        Eigen::Quaterniond origin = target_el->second;
+        Eigen::Quaterniond origin = target_angle;
 
         
 
@@ -136,7 +132,7 @@ Eigen::Vector3d StampedDeque<Eigen::Vector3d>::get(ros::Time time)
         // lsm_value = Vector2Quaternion<double>(Eigen::Vector3d(  coeff_x(0) + diff_t * coeff_x(1) + pow(diff_t,2.0) * coeff_x(2),
         //                                                         coeff_y(0) + diff_t * coeff_y(1) + pow(diff_t,2.0) * coeff_y(2),
         //                                                         coeff_z(0) + diff_t * coeff_z(1) + pow(diff_t,2.0) * coeff_z(2))) * origin;
-        Eigen::Vector3d lsm_vec = Eigen::Vector3d(coeff_x(order),coeff_y(order),coeff_z(coeff_z.size()-1));
+        Eigen::Vector3d lsm_vec = Eigen::Vector3d(coeff_x(order),coeff_y(order),coeff_z(order));
         for(int n= order - 1; n>=0; --n)//★ここ
         {
             lsm_vec = lsm_vec * diff_t + Eigen::Vector3d(coeff_x(n),coeff_y(n),coeff_z(n));

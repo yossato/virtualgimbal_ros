@@ -171,35 +171,8 @@ public:
         }
     }
 
-    int get(ros::Time time, T &q)
-    {
-        int retval = 0;
+    T get_interpolate(ros::Time time);
 
-        if(data.empty())
-        {
-            return DequeStatus::EMPTY;
-        }
-
-        auto it = std::find_if(data.begin(), data.end(), [&](std::pair<ros::Time, T> x) { return time <= x.first; });
-        /*if (data.begin() == it)
-        {
-            // TODO: 最初と次の間の時間を指定された時に変な動作する？
-            q = data.front().second;
-
-            return DequeStatus::TIME_STAMP_IS_EARLIER_THAN_FRONT;
-        }
-        else */if (data.end() == it)   // Not found
-        {
-            q = T();
-            // std::cerr << "Failed to get()." << std::endl;
-            return DequeStatus::TIME_STAMP_IS_LATER_THAN_BACK;
-        }
-        else
-        {
-            q = it->second;
-            return DequeStatus::GOOD;
-        }
-    };
 
     void print_least_squares_method(const ros::Time &begin, const ros::Time &end);
     Eigen::Quaterniond get_correction_quaternion_using_least_squares_method(const ros::Time &begin, const ros::Time &end, ros::Time &times, int order);

@@ -66,31 +66,11 @@ MatrixPtr manager::getR(ros::Time time, double ratio){
     assert(ratio >= 0.0);
     assert((ratio - 1.0) < std::numeric_limits<double>::epsilon());
 
-    int status = filtered_angle_quaternion.get(time, filtered);
-
-    if (DequeStatus::GOOD != status)
-    {
-        ROS_ERROR("Logic error at %s:%d",__FUNCTION__,__LINE__);
-        throw;
-    }
+    filtered = filtered_angle_quaternion.get_interpolate(time);
 
     for (int row = 0, e = camera_info_->height_; row < e; ++row)
     {
-        status = raw_angle_quaternion.get(time + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)), raw);
-
-        if (DequeStatus::GOOD != status)
-        {
-            ROS_ERROR("Logic error at %s:%d",__FUNCTION__,__LINE__);
-            throw;
-        }
-        // status = filtered_angle_quaternion.get(time + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)), filtered);
-        // status = filtered_angle_quaternion.get(time, filtered);
-
-        // if (DequeStatus::GOOD != status)
-        // {
-        //     ROS_ERROR("Logic error at %s:%d",__FUNCTION__,__LINE__);
-        //     throw;
-        // }
+        raw = raw_angle_quaternion.get_interpolate(time + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)));
 
         Eigen::Quaterniond q = filtered.conjugate() * raw;
         Eigen::Vector3d vec = Quaternion2Vector(q) * ratio;
@@ -120,26 +100,18 @@ MatrixPtr manager::getR_LMS(ros::Time time, const ros::Time begin, const ros::Ti
     if(0)
     {
         printf("rw,rx,ry,rz,cw,cx,cy,cz\r\n");
-        raw_angle_quaternion.get(time, raw);
+        raw = raw_angle_quaternion.get_interpolate(time);
         printf("%f,%f,%f,%f,%f,%f,%f,%f\r\n",raw.w(),raw.x(),raw.y(),raw.z(),
         correction_quaternion.w(),correction_quaternion.x(),correction_quaternion.y(),correction_quaternion.z());
     }
 
     for (int row = 0, e = camera_info_->height_; row < e; ++row)
     {
-        int status = raw_angle_quaternion.get(time + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)), raw);
-
-        if (DequeStatus::GOOD != status)
-        {
-            ROS_ERROR("Logic error at %s:%d",__FUNCTION__,__LINE__);
-            throw;
-        }
+        raw = raw_angle_quaternion.get_interpolate(time + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)));
 
         Eigen::Quaterniond q = correction_quaternion.conjugate() * raw;
         Eigen::Vector3d vec = Quaternion2Vector(q) * ratio;
         Eigen::Quaterniond q2 = Vector2Quaternion<double>(vec).normalized();
-
-        // Eigen::Quaterniond q2 = (correction_quaternion.conjugate() * raw).normalized();
 
         q2 = (raw.conjugate() * q2 * raw).normalized();
 
@@ -368,8 +340,9 @@ void manager::run()
                     std::cout << "ratio:" << ratio << std::endl;
                 }
 
-                R2 = getR_LMS(time_gyro_center_line,time_gyro_last_line-ros::Duration(lms_period_),time_gyro_last_line,lms_order_ ,ratio);
+                
             }
+            // R2 = getR_LMS(time_gyro_center_line,time_gyro_last_line-ros::Duration(lms_period_),time_gyro_last_line,lms_order_ ,ratio);
 
             float ik1 = camera_info_->inverse_k1_;
             float ik2 = camera_info_->inverse_k2_;
