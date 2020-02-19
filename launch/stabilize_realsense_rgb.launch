@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
     <include file="$(find virtualgimbal_ros)/launch/stabilize.launch">
-        <arg name="image_rect"      value="/camera/color/image_raw"/>
+        <arg name="image"           value="/camera/color/image_raw"/>
         <arg name="imu_data"        value="/camera/gyro/sample"/>
         <arg name="zoom_factor"     value="1.3"/>
         <arg name="enable_trimming" value="true"/>

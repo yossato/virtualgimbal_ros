@@ -1,18 +1,18 @@
 <?xml version="1.0"?>
 <launch>
-    <arg name="image_rect"      default="/image_rect"/>
+    <arg name="image"           default="/image_rect"/>
     <arg name="imu_data"        default="/imu_data"/>
     <arg name="zoom_factor"     default="1.3"/>
     <arg name="enable_trimming" default="true"/>
     <arg name="line_delay"      default="0.0"/>
     <arg name="offset_time"     default="0.0"/>
-    <arg name="lsm_order"       default="2"/>
+    <arg name="lsm_order"       default="1"/>
     <arg name="lsm_period"      default="1.5"/>
     <arg name="verbose"         default="false"/> <!-- For Debug -->
     <arg name="allow_blue_space" default="false"/>
 
     <node name="virtualgimbal_ros" pkg="virtualgimbal_ros" type="virtualgimbal_ros_node" output="screen">
-        <param name="image_rect"        value="$(arg image_rect)"/>
+        <param name="image"             value="$(arg image)"/>
         <param name="imu_data"          value="$(arg imu_data)"/>
         <param name="zoom_factor"       value="$(arg zoom_factor)"/>
         <param name="enable_trimming"   value="$(arg enable_trimming)"/>

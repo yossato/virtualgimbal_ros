@@ -69,7 +69,6 @@ private:
 
     // Image processing parameters
     float zoom_;
-    bool enable_black_space_removal_;
     float cutoff_frequency_;
     float a1_;
     bool enable_trimming_;

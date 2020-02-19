@@ -5,8 +5,8 @@ namespace virtualgimbal
 
 manager::manager() : pnh_("~"), image_transport_(nh_), q(1.0, 0, 0, 0), q_filtered(1.0, 0, 0, 0),
  last_vector(0, 0, 0), param(pnh_),
- zoom_(1.3f),enable_black_space_removal_(true),cutoff_frequency_(0.5),enable_trimming_(true),
- offset_time_(ros::Duration(0.0)), verbose(false), allow_blue_space(false), lms_period_(2.0), lms_order_(2)
+ zoom_(1.3f),cutoff_frequency_(0.5),enable_trimming_(true),
+ offset_time_(ros::Duration(0.0)), verbose(false), allow_blue_space(false), lms_period_(1.5), lms_order_(1)
 {
     std::string image = "/image_rect";
     std::string imu_data = "/imu_data";
@@ -21,7 +21,6 @@ manager::manager() : pnh_("~"), image_transport_(nh_), q(1.0, 0, 0, 0), q_filter
         ROS_ERROR("zoom_factor must be larger than 1.0.");
         throw;
     }
-    pnh_.param("enable_black_space_removal",enable_black_space_removal_,enable_black_space_removal_);
     pnh_.param("cutoff_frequency",cutoff_frequency_,cutoff_frequency_);
     pnh_.param("enable_trimming",enable_trimming_,enable_trimming_);
     
@@ -46,8 +45,11 @@ manager::manager() : pnh_("~"), image_transport_(nh_), q(1.0, 0, 0, 0), q_filter
     // estimated_angular_velocity_pub  = pnh_.advertise<sensor_msgs::Imu>("angular_velocity/estimate",1000);
     // measured_augular_velocity_pub   = pnh_.advertise<sensor_msgs::Imu>("angular_velocity/measured",1000);
 
-    raw_quaternion_queue_size_pub = pnh_.advertise<std_msgs::Float64>("raw_quaternion_queue_size", 10);
-    filtered_quaternion_queue_size_pub = pnh_.advertise<std_msgs::Float64>("filtered_quaternion_queue_size", 10);
+    if(verbose)
+    {
+        raw_quaternion_queue_size_pub = pnh_.advertise<std_msgs::Float64>("raw_quaternion_queue_size", 10);
+        filtered_quaternion_queue_size_pub = pnh_.advertise<std_msgs::Float64>("filtered_quaternion_queue_size", 10);
+    }
 
     raw_angle_quaternion = Rotation(verbose);
 
