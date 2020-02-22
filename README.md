@@ -9,7 +9,7 @@ Inertial measurement Unit (IMU)で計測した角速度に基づいて、ビデ�
 ```
 $ roslaunch virtualgimbal_ros stabilize_realsense_rgb.launch
 ```
-サンプルとしてRealSense D435iのrosbagを用意しました。このrosbagを再生すると安定化される様子がわかります。  
+サンプルとしてRealSense D435iで撮影した動画のrosbagを用意しました。このrosbagを再生してvirtualgimbal_rosで安定化すと効果がわかります。  
 ```
 $ rosbag play 2019-09-07-14-17-26.bag --clock
 ```
@@ -24,21 +24,21 @@ $ rqt
 カメラで撮影した動画と、IMUで計測した角速度から、安定化した動画を生成します。
 
 ### 3.1.1 Subscribed Topics
-image_raw (sensor_msgs/Image)  
-  Rectified image stream from the camera driver.
-
-camera_info (sensor_msgs/Camerainfo)
-  Camera metadata.
-
-img_data (sensor_msgs/Imu)
-  Angular velocity.  
-
-## 3.1.2 Published Topics
-stabilized/image_rect (sensor_msgs/Image)  
-  Stabilized image stream.  
+#### image_raw (sensor_msgs/Image)  
+Rectified image stream from the camera driver.
   
-stabilized/camera_info (sensor_msgs/CameraInfo)
-  Stabilized camera metadata.  
+#### camera_info (sensor_msgs/Camerainfo)  
+Camera metadata.
+  
+#### imu_data (sensor_msgs/Imu)  
+Angular velocity.  
+  
+## 3.1.2 Published Topics
+#### stabilized/image_rect (sensor_msgs/Image)  
+Stabilized image stream.  
+  
+#### stabilized/camera_info (sensor_msgs/CameraInfo)  
+Stabilized camera metadata.  
   
 ## 3.1.3 Parameter  
 |Parameter|Type|default|description|
