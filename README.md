@@ -1,25 +1,26 @@
 # virtualgimbal_ros
-Inertial measurement Unit (IMU)で計測した角速度に基づいて、ビデオ映像のブレを補正して安定化します。OpenCLによるGPU処理によりリアルタイム動作が可能です。  
+Inertial measurement Unit (IMU)で計測した角速度に基づいて、ビデオ映像のブレを補正して安定化します。人によるカメラ映像を通じたロボット操縦時の視認性向上、画像認識・物体追跡性能向上および映像撮影品質の向上を目的としています。  
+■x■pixel, ■fpsのカラー映像に対して、OpenCLによるGPU処理によりノートPCのCPU(Intel Core i7-8550U)内蔵GPUでリアルタイム動作を確認しています。  
   
 # 1. Overview  
-このパッケージはvirtualgimbal_ros_nodeとsynchronizer_nodeからなります。virtualgimbal_ros_nodeはビデオ映像を安定化するノードです。  
+このパッケージは、動画をジャイロセンサで計測した角速度で安定化するvirtualgimbal_ros_nodeと、動画とジャイロセンサ間のタイムスタンプのオフセットを精密測定するsynchronizer_nodeからなります。  
 <<ここにyoutube動画を追加>>  
+  
 # 2. Mini Tutorial
-次のコマンドでvirtualgimbal_ros_nodeを起動します。
+サンプルとしてRealSense D435iで撮影した動画のrosbagを用意しました。この動画を安定化してみます。以下のコマンドを別々のターミナルで実行してください。    
 ```
-$ roslaunch virtualgimbal_ros stabilize_realsense_rgb.launch
-```
-サンプルとしてRealSense D435iで撮影した動画のrosbagを用意しました。このrosbagを再生してvirtualgimbal_rosで安定化すと効果がわかります。  
-```
-$ rosbag play 2019-09-07-14-17-26.bag --clock
+$ roslaunch virtualgimbal_ros stabilize_realsense_rgb.launch  
+$ rosbag play 2019-09-07-14-17-26.bag --clock  
 ```
 rqtで可視化しましょう。  
 ```  
 $ rqt  
 ```  
+左が安定化前の動画で右が安定化後の動画です。安定化後は画像が拡大されて周囲が切り取られますが画像内の動きが少なく動きが安定化しています。  
 <<■ここにrqtのイメージ画像>>  
+  
 # 3. Nodes
-## 3.1
+## 3.1 virtualgimbal_ros_node
 ![nodes](https://github.com/yossato/images/blob/master/nodes.png?raw=true)  
 カメラで撮影した動画と、IMUで計測した角速度から、安定化した動画を生成します。
 
