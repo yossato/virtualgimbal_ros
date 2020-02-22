@@ -1,5 +1,6 @@
 # virtualgimbal_ros
-Inertial measurement Unit (IMU)で計測した角速度に基づいて、ビデオ映像のブレを補正して安定化します。人によるカメラ映像を通じたロボット操縦時の視認性向上、画像認識・物体追跡性能向上および映像撮影品質の向上を目的としています。  
+Inertial measurement Unit (IMU)で計測した角速度に基づいて、ビデオ映像のブレを補正して安定化します。  
+カメラ映像を通じたロボット操縦時の視認性向上、画像認識・物体追跡性能向上および映像撮影品質の向上を目的としています。  
 ■x■pixel, ■fpsのカラー映像に対して、OpenCLによるGPU処理によりノートPCのCPU(Intel Core i7-8550U)内蔵GPUでリアルタイム動作を確認しています。  
   
 # 1. Overview  
@@ -20,7 +21,7 @@ $ rqt
 <<■ここにrqtのイメージ画像>>  
   
 # 3. Nodes
-## 3.1 virtualgimbal_ros_node
+## 3.1 virtualgimbal_ros_node  
 ![nodes](https://github.com/yossato/images/blob/master/nodes.png?raw=true)  
 カメラで撮影した動画と、IMUで計測した角速度から、安定化した動画を生成します。
 
@@ -53,6 +54,10 @@ Stabilized camera metadata.
 |allow_blue_space|bool|false|trueで画像に青い部分が生じることを許すと、ブレ補正能力が大幅に向上しますがカメラのブレが大きくなり限界を迎えると画面の端に青い部分が生じます。falseにするとブレ補正能力が低下しますが青い部分ができないようにします。|
 |lsm_period|double|1.5|最小二乗法(least squares method)を計算する時間の長さ(秒)。値を大きくすると安定化能力が向上するが、急なカメラの動きに追従できなくなる。値を小さくすると安定化能力が低下するがカメラの急な動きに追従できるようになる。|
 |lsm_order|double|1|最小二乗法でフィッティングする曲線の次数。1だと1次式の直線でフィッティングする。2だと2次式の放物線でフィッティングする。次数を上げると追従性が向上するが安定化能力が低下する。|
+  
+## 3.1 synchronizer_node  
+動画とIMU間のタイムスタンプのオフセットを精密測定するノードです。動画のタイムスタンプは露光タイミングの定義方法により変わるため、IMUを利用して安定化するときに、タイミングのわずかな差が問題になります。動画の安定化にはミリ秒以下の精度の同期が必要になります。  
+virtualgimbal_rosではカメラの露光中心をタイムスタンプの基準として利用しています。このnodeは、correlation_timeに指定された秒数だけデータが集まると、sum of absolute differences (SAD)により動画とIMUの角速度の相関を計算し最も良く相関があるタイミングを計算します。得られた値はstabilize.launchのparamのoffset_timeにセットして使います。  
 
 # 4. Launch files
 ## 4.1 stabilize.launch
@@ -65,7 +70,7 @@ Intel RealSense D435iのRGBイメージストリームについてIMUの角速�
 Intel RealSense D435iのirカメラの左側のイメージストリームについてIMUの角速度を用いて安定化します。paramとしてD435iのトピック名を指定してstabilize.launchを起動します。
 
 ### synchronizer.launch
-画像ストリームとIMUの時刻同期をします。イメージストリームについてIMUの角速度と同期のタイミングを計算します。カメラ画像のタイムスタンプは、時刻の定義方法により値が変わるため、IMUを利用して安定化するときに問題になります。virtualgimbal_rosではカメラの露光中心をタイムスタンプの基準として利用しています。このlaunchにより、correlation_timeに指定された秒数だけデータが集まると、sum of absolute differences (SAD)により相関を計算することで、画像とIMUについて時刻を変えながら最も相関が高いタイミングを計算します。得られた値はstabilize.launchのparamのoffset_timeにセットしてください。
+画像ストリームとIMUの時刻同期をします。イメージストリームについてIMUの角速度と同期のタイミングを計算します。
 
 ### synchronize_realsense_rgb.launch
 Intel RealSense D435iのRGBイメージストリームとIMUの同期を取ります。
