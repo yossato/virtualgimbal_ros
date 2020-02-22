@@ -20,7 +20,7 @@ $ rqt
 <<■ここにrqtのイメージ画像>>  
 # 3. Nodes
 ## 3.1
-<<■ここにノード図を追加>>  
+![nodes](https://github.com/yossato/images/blob/master/nodes.png?raw=true)  
 カメラで撮影した動画と、IMUで計測した角速度から、安定化した動画を生成します。
 
 ### 3.1.1 Subscribed Topics
@@ -34,32 +34,24 @@ img_data (sensor_msgs/Imu)
   Angular velocity.  
 
 ## 3.1.2 Published Topics
-/camera/stabilized/image_rect (sensor_msgs/Image)  
+stabilized/image_rect (sensor_msgs/Image)  
   Stabilized image stream.  
   
-/camera/stabilized/camera_info (sensor_msgs/CameraInfo)
+stabilized/camera_info (sensor_msgs/CameraInfo)
   Stabilized camera metadata.  
   
 ## 3.1.3 Parameter  
-
-image (string, default: image)  
-  入力画像トピック  
-imu_data (string, default: imu_data)
-  入力角速度トピック  
-zoom_factor (float, default: 1.3)
-  画像のズーム倍率。1以上の値を設定する。値を大きくすると手ブレ補正能力が向上するが、画像の四隅の切り取られる量が増える。  
-enable_trimming (bool, default: true)
-  trueに設定すると画像の四隅を切り取った分だけ出力画像サイズを小さくする。falseに設定すると入力画像と出力画像のサイズを等しくする。出力画像は引き伸ばされる。trueにしたほうがtopicのデータ量は減少するが画像サイズが一般的ではないサイズになる。  
-offset_time (double, default: 0)  
-  ジャイロセンサと画像ストリームのタイムスタンプのオフセット時間(秒)。synchronizer_nodeにより計測できる。
-verbose (bool, default: false)  
-  デバック機能を提供する。trueで各種ログが有効化され、安定化の様子がグラフで表示される。falseでログ機能を停止する。  
-allow_blue_space (bool, default: false)  
-  trueで画像に青い部分が生じることを許すと、ブレ補正能力が大幅に向上しますがカメラのブレが大きくなり限界を迎えると画面の端に青い部分が生じます。falseにするとブレ補正能力が低下しますが青い部分ができないようにします。  
-lsm_period (double, default: 1.5)  
-  最小二乗法(least squares method)を計算する時間の長さ(秒)。値を大きくすると安定化能力が向上するが、急なカメラの動きに追従できなくなる。値を小さくすると安定化能力が低下するがカメラの急な動きに追従できるようになる。  
-lsm_order (double, default: 1)  
-  最小二乗法でフィッティングする曲線の次数。1だと1次式の直線でフィッティングする。2だと2次式の放物線でフィッティングする。次数を上げると追従性が向上するが安定化能力が低下する。
+|Parameter|Type|default|description|
+|:---|:---|:---|:---|
+|image|string|image|入力画像トピック|
+|imu_data|string|imu_data|入力角速度トピック|
+|zoom_factor|float|1.3|画像のズーム倍率。1以上の値を設定する。値を大きくすると画像が拡大され手ブレ補正能力が向上するが、画像の四隅の切り取られる量が増える。|
+|enable_trimming|bool|true|trueに設定すると画像の四隅を切り取った分だけ出力画像サイズを小さくする。falseに設定すると入力画像と出力画像のサイズを等しくする。出力画像は引き伸ばされる。trueにしたほうがtopicのデータ量は減少するが画像サイズが一般的ではないサイズになる。|
+|offset_time|double|0|ジャイロセンサと画像ストリームのタイムスタンプのオフセット時間(秒)。synchronizer_nodeにより計測できる。|
+|verbose|bool|false|デバック機能を提供する。trueで各種ログが有効化され、安定化の様子がグラフで表示される。falseでログ機能を停止する。|
+|allow_blue_space|bool|false|trueで画像に青い部分が生じることを許すと、ブレ補正能力が大幅に向上しますがカメラのブレが大きくなり限界を迎えると画面の端に青い部分が生じます。falseにするとブレ補正能力が低下しますが青い部分ができないようにします。|
+|lsm_period|double|1.5|最小二乗法(least squares method)を計算する時間の長さ(秒)。値を大きくすると安定化能力が向上するが、急なカメラの動きに追従できなくなる。値を小さくすると安定化能力が低下するがカメラの急な動きに追従できるようになる。|
+|lsm_order|double|1|最小二乗法でフィッティングする曲線の次数。1だと1次式の直線でフィッティングする。2だと2次式の放物線でフィッティングする。次数を上げると追従性が向上するが安定化能力が低下する。|
 
 # 4. Launch files
 ## 4.1 stabilize.launch
