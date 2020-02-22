@@ -56,8 +56,27 @@ Stabilized camera metadata.
 |lsm_order|double|1|最小二乗法でフィッティングする曲線の次数。1だと1次式の直線でフィッティングする。2だと2次式の放物線でフィッティングする。次数を上げると追従性が向上するが安定化能力が低下する。|
   
 ## 3.1 synchronizer_node  
-動画とIMU間のタイムスタンプのオフセットを精密測定するノードです。動画のタイムスタンプは露光タイミングの定義方法により変わるため、IMUを利用して安定化するときに、タイミングのわずかな差が問題になります。動画の安定化にはミリ秒以下の精度の同期が必要になります。  
-virtualgimbal_rosではカメラの露光中心をタイムスタンプの基準として利用しています。このnodeは、correlation_timeに指定された秒数だけデータが集まると、sum of absolute differences (SAD)により動画とIMUの角速度の相関を計算し最も良く相関があるタイミングを計算します。得られた値はstabilize.launchのparamのoffset_timeにセットして使います。  
+動画とIMU間のタイムスタンプのオフセットを精密測定するノードです。動画のタイムスタンプはカメラのシャッターの露光タイミングの定義方法により変わります。そのため、IMUを利用して安定化するときに、定義の違いによるタイミングのわずかな差が安定化品質の問題になります。動画の安定化にはミリ秒以下の精度の同期が必要になります。  
+virtualgimbal_rosではカメラのシャッターの露光中心をタイムスタンプの基準として利用しています。このnodeはSum of Absolute Differences (SAD)により動画とIMUの角速度の相関を計算し最も良く相関があるタイミングを計算します。もう少し詳しく説明すると動画からオプティカルフローを計算し、オプティカルフローから角速度を推定し、推定された角速度と、IMUにより計測された角速度の相関を、時間を少しずつ変化させながら計算します。得られたオフセットはstabilize.launchのparamのoffset_timeにセットして使います。  
+  
+### 3.1.1 Subscribed Topics
+#### image_raw (sensor_msgs/Image)  
+Rectified image stream from the camera driver.
+  
+#### camera_info (sensor_msgs/Camerainfo)  
+Camera metadata.
+  
+#### imu_data (sensor_msgs/Imu)  
+Angular velocity.  
+  
+### 3.1.2 
+Parameter  
+|Parameter|Type|default|description|
+|:---|:---|:---|:---|
+|image|string|image|入力画像トピック|
+|imu_data|string|imu_data|入力角速度トピック|
+|maximum_offset_time|float|0.5|SADを計算するオフセットの最大値(秒)。動画とIMUのタイムスタンプ差の最大値を指定してください。値を大きくすると動画とIMUのタイムスタンプの誤差が大きくてもオフセットの推定が可能ですが、計算に時間がかかるようになります。|
+|correlation_time|float|15.0|SADを計算する時間の長さ(秒)。長くするとオフセットの推定精度が向上するが、推定に必要な動画の長さが長くなり、推定に時間がかかるようになる。|
 
 # 4. Launch files
 ## 4.1 stabilize.launch
