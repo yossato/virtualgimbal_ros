@@ -5,7 +5,7 @@ Inertial measurement Unit (IMU)で計測した角速度に基づいて、ビデ�
   
 # 1. Overview  
 このパッケージは、動画をジャイロセンサで計測した角速度で安定化するvirtualgimbal_ros_nodeと、動画とジャイロセンサ間のタイムスタンプのオフセットを精密測定するsynchronizer_nodeからなります。  
-<<ここにyoutube動画を追加>>  
+[![](https://img.youtube.com/vi/ft6v7h5kN6g&feature=youtu.be/0.jpg)](https://www.youtube.com/watch?v=ft6v7h5kN6g&feature=youtu.be)  
   
 # 2. Mini Tutorial
 サンプルとして[RealSense D435iで撮影した動画のrosbag](https://drive.google.com/uc?id=1uaRjiDGhFVExLlXTnzp7vVMDJGi7vvzC)を用意しました。この動画を安定化してみます。以下のコマンドを別々のターミナルで実行してください。    
@@ -18,7 +18,7 @@ rqtで可視化しましょう。
 $ rqt  
 ```  
 左が安定化前の動画で右が安定化後の動画です。安定化後は画像が拡大されて周囲が切り取られますが画像内の動きが少なく動きが安定化しています。  
-<<■ここにrqtのイメージ画像>>  
+![rqt_image](https://github.com/yossato/images/blob/master/soleil-hill-park.png?raw=true) 
   
 # 3. Nodes
 ## 3.1 virtualgimbal_ros_node  
