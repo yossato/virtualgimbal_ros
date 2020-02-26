@@ -15,9 +15,12 @@ Inertial measurement Unit (IMU)で計測した角速度に基づいて、ビデ�
 # apt install ocl-icd-libopencl1 opencl-headers clinfo ocl-icd-opencl-dev  
 ```
 
-NVIDIAのGPUを搭載している場合はCUDAがインストールされていることを確認してください。  
+### 1.1.1 NVIDIA GPU  
+NVIDIAのGPUを使用する場合は[ディスプレイドライバ](https://www.nvidia.com/download/index.aspx)をインストールしてください。
 
-IntelのCPU内蔵GPUを使う場合は次のコマンドによりOpenCLを使用可能にしてください。  
+
+### 1.1.2 Intel HD Graphics  
+IntelのCPU内蔵GPUを使う場合は次のコマンドによりOpenCL用のドライバである[Intel(R) Graphics Compute Runtime for OpenCL(TM)](https://github.com/intel/compute-runtime/blob/master/documentation/Neo_in_distributions.md)をインストールしてください。  
 ```
 # add-apt-repository ppa:intel-opencl/intel-opencl
 # apt update
