@@ -8,7 +8,7 @@ Inertial measurement Unit (IMU)で計測した角速度に基づいて、ビデ�
 <<ここにyoutube動画を追加>>  
   
 # 2. Mini Tutorial
-サンプルとしてRealSense D435iで撮影した動画のrosbagを用意しました。この動画を安定化してみます。以下のコマンドを別々のターミナルで実行してください。    
+サンプルとして[RealSense D435iで撮影した動画のrosbag](https://drive.google.com/uc?id=1uaRjiDGhFVExLlXTnzp7vVMDJGi7vvzC)を用意しました。この動画を安定化してみます。以下のコマンドを別々のターミナルで実行してください。    
 ```
 $ roslaunch virtualgimbal_ros stabilize_realsense_rgb.launch  
 $ rosbag play 2019-09-07-14-17-26.bag --clock  

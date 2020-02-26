@@ -38,7 +38,7 @@ manager::manager() : pnh_("~"), image_transport_(nh_), q(1.0, 0, 0, 0), q_filter
     imu_subscriber_ = pnh_.subscribe(imu_data, 10000, &manager::imu_callback, this);
     // pub_ = image_transport_.advertise("camera/image", 1);
 
-    camera_publisher_ = image_transport_.advertiseCamera("camera/stabilized/image_rect",1);
+    camera_publisher_ = image_transport_.advertiseCamera("stabilized/image_rect",1);
 
     // raw_quaternion_pub              = pnh_.advertise<sensor_msgs::Imu>("angle/raw", 1000);
     // filtered_quaternion_pub         = pnh_.advertise<sensor_msgs::Imu>("angle/filtered", 1000);
