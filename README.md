@@ -1,14 +1,26 @@
 # virtualgimbal_ros
 Inertial measurement Unit (IMU)で計測した角速度に基づいて、ビデオ映像のブレを補正して安定化します。  
 カメラ映像を通じたロボット操縦時の視認性向上、画像認識・物体追跡性能向上および映像撮影品質の向上を目的としています。  
-1920 x 1080 pixel, 30 fpsのRGB動画に対して、OpenCLによるGPU処理によりノートPCのCPU(Intel Core i7-8550U)内蔵GPUでリアルタイム動作を確認しています。  
+1920 x 1080 pixel, 30 fpsのRGB動画に対して、OpenCLによるGPU処理によりノートPCのCPU(Intel Core i7-8550U)内蔵GPUでリアルタイムで安定化が動作することを確認しています。  
   
 # 1. Overview  
 このパッケージは、動画をジャイロセンサで計測した角速度で安定化するvirtualgimbal_ros_nodeと、動画とジャイロセンサ間のタイムスタンプのオフセットを精密測定するsynchronizer_nodeからなります。  
 [![](https://img.youtube.com/vi/ft6v7h5kN6g&feature=youtu.be/0.jpg)](https://www.youtube.com/watch?v=ft6v7h5kN6g&feature=youtu.be)  
-  
+
+# 1.1 Install dependencies  
+本パッケージは Ubuntu 16.04 と ROS Kinetic で動作確認をしました。  
+動作にはOpenCLのセットアップが必要です。  
+
+```
+# apt install ocl-icd-libopencl1 opencl-headers clinfo ocl-icd-opencl-dev  
+# add-apt-repository ppa:intel-opencl/intel-opencl
+# apt update
+# apt install intel-opencl-icd
+```
+
+
 # 2. Mini Tutorial
-サンプルとして[RealSense D435iで撮影した動画のrosbag](https://drive.google.com/uc?id=1uaRjiDGhFVExLlXTnzp7vVMDJGi7vvzC)を用意しました。この動画を安定化してみます。以下のコマンドを別々のターミナルで実行してください。    
+[RealSense D435iで撮影した動画のrosbag](https://drive.google.com/uc?id=1uaRjiDGhFVExLlXTnzp7vVMDJGi7vvzC)をダウンロードして安定化動作を試すことができます。以下のコマンドを別々のターミナルで実行してください。    
 ```
 $ roslaunch virtualgimbal_ros stabilize_realsense_rgb.launch  
 $ rosbag play 2019-09-07-14-17-26.bag --clock  
