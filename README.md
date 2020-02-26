@@ -9,7 +9,7 @@ Inertial measurement Unit (IMU)で計測した角速度に基づいて、ビデ�
   
 # 1.1 Install dependencies  
 本パッケージは Ubuntu 16.04 と ROS Kinetic で動作確認をしました。  
-動作には次に示すOpenCLのセットアップが必要です。  
+動作には次のOpenCLのセットアップとGPUの種類に応じたドライバのインストールが必要です。  
 
 ```
 # apt install ocl-icd-libopencl1 opencl-headers clinfo ocl-icd-opencl-dev  
