@@ -1,7 +1,7 @@
 # virtualgimbal_ros
 Inertial measurement Unit (IMU)で計測した角速度に基づいて、ビデオ映像のブレを補正して安定化します。  
 カメラ映像を通じたロボット操縦時の視認性向上、画像認識・物体追跡性能向上および映像撮影品質の向上を目的としています。  
-■x■pixel, ■fpsのカラー映像に対して、OpenCLによるGPU処理によりノートPCのCPU(Intel Core i7-8550U)内蔵GPUでリアルタイム動作を確認しています。  
+1920 x 1080 pixel, 30 fpsのRGB動画に対して、OpenCLによるGPU処理によりノートPCのCPU(Intel Core i7-8550U)内蔵GPUでリアルタイム動作を確認しています。  
   
 # 1. Overview  
 このパッケージは、動画をジャイロセンサで計測した角速度で安定化するvirtualgimbal_ros_nodeと、動画とジャイロセンサ間のタイムスタンプのオフセットを精密測定するsynchronizer_nodeからなります。  
