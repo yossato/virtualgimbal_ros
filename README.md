@@ -1,7 +1,7 @@
 # virtualgimbal_ros
 VirtualGimbal ROSは、Inertial measurement Unit (IMU)で計測した角速度に基づいてブレを補正して、動画を安定化します。  
 VirtualGimbal ROSは、カメラ映像を通じたロボット操縦時の視認性向上、画像認識・物体追跡性能向上および映像撮影品質の向上を目的として開発されました。  
-Intel RealSense D435iのRGB映像の最大サイズである1920 x 1080 pixel, 30 fpsの動画ストリームに対して、OpenCLによるGPU処理によりノートPCのCPU(Intel Core i7-8550U)内蔵GPUでリアルタイムで安定化が動作することを確認しています。  
+VirtualGimbal ROSはOpenCLによるGPU処理で高速に動作します。例えば、Intel RealSense D435iの1920x1080 pixel, 30 fpsの動画をノートPC(Core i7-8550U)でリアルタイムに安定化できることを確認しています。  
   
 # 1. Overview  
 このパッケージは、動画をジャイロセンサで計測した角速度で安定化するvirtualgimbal_ros_nodeと、動画とジャイロセンサ間のタイムスタンプのオフセットを精密測定するsynchronizer_nodeからなります。  
