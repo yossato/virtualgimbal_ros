@@ -128,13 +128,11 @@ void manager::callback(const sensor_msgs::ImageConstPtr &image, const sensor_msg
 {
     if (!camera_info_)
     {
-        double line_delay;
-        pnh_.param("line_delay",line_delay,0.0);
         camera_info_ = std::make_shared<CameraInformation>(std::string("ros_camera"), ros_camera_info->distortion_model, Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0),
                                                            ros_camera_info->width, ros_camera_info->height, ros_camera_info->P[0],
                                                            ros_camera_info->P[5], ros_camera_info->P[2], ros_camera_info->P[6],
                                                            ros_camera_info->D[0], ros_camera_info->D[1], ros_camera_info->D[2],
-                                                           ros_camera_info->D[3], line_delay);
+                                                           ros_camera_info->D[3], param.line_delay);
         ros_camera_info_ = ros_camera_info;
     }
 
