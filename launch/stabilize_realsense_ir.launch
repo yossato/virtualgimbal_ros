@@ -12,4 +12,17 @@
         <arg name="verbose"         value="false"/> <!-- For Debug -->
         <arg name="allow_blue_space" value="false"/>
     </include>
+
+    <!-- Show input image -->
+    <node name="raw" pkg="image_view" type="image_view" respawn="false" output="screen">
+        <remap from="image" to="/camera/infra1/image_rect_raw" />
+        <param name="window_name" value="Input image"/>
+    </node>
+
+    <!-- Show stabilized image -->
+    <node name="stabilized" pkg="image_view" type="image_view" respawn="false" output="screen">
+        <remap from="image" to="/stabilized/image_rect" />
+        <param name="window_name" value="Stabilized image"/>
+    </node>
+
 </launch>

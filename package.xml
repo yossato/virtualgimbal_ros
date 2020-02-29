@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>virtualgimbal_ros</name>
-  <version>0.0.1</version>
+  <version>0.9.0</version>
   <description>The virtualgimbal_ros package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
@@ -18,14 +18,13 @@
 
   <!-- Url tags are optional, but multiple are allowed, one per tag -->
   <!-- Optional attribute type can be: website, bugtracker, or repository -->
-  <!-- Example: -->
-  <!-- <url type="website">http://wiki.ros.org/virtualgimbal_ros</url> -->
+  <url type="website">https://github.com/yossato/virtualgimbal_ros</url>
 
 
   <!-- Author tags are optional, multiple are allowed, one per tag -->
   <!-- Authors do not have to be maintainers, but could be -->
   <!-- Example: -->
-  <!-- <author email="jane.doe@example.com">Jane Doe</author> -->
+  <author email="virtualgimbal@xa2.so-net.ne.jp">Yoshiaki Sato</author>
 
 
   <!-- The *depend tags are used to specify dependencies -->
