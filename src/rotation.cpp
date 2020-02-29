@@ -1,3 +1,35 @@
+/* 
+ * Software License Agreement (BSD 3-Clause License)
+ * 
+ * Copyright (c) 2020, Yoshiaki Sato
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ * 
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 
+ * 3. Neither the name of the copyright holder nor the names of its
+ *    contributors may be used to endorse or promote products derived from
+ *    this software without specific prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
 #include "rotation.h"
 #include "SO3Filters.h"
 
@@ -67,12 +99,8 @@ Eigen::Vector3d StampedDeque<Eigen::Vector3d>::get(ros::Time time)
         auto end_el     = std::find_if(data.begin(),data.end(),[&end](std::pair<ros::Time, Eigen::Quaterniond> x) { return end < x.first; });
         int num = std::distance(begin_el,end_el);
 
-        // if(data.size() > 100)
-        // {
-        //     auto el = data.end() - 100;
         Eigen::VectorXd time(num);
         Eigen::VectorXd angle(num);
-        // auto el = begin_el;
         for(int i=0;i < num;++i)
         {
             time(i)  = ((begin_el+i)->first - (end_el)->first).toSec();
@@ -85,14 +113,12 @@ Eigen::Vector3d StampedDeque<Eigen::Vector3d>::get(ros::Time time)
             std::cout << time(i) << "," << angle(i) << "," << coeff(0) + time(i) * coeff(1) + pow(time(i),2.0) * coeff(2) << std::endl;
         }
         std::cout << std::flush;
-        // }
     }
 
     template <>
     Eigen::Quaterniond StampedDeque<Eigen::Quaternion<double>>::get_correction_quaternion_using_least_squares_method(const ros::Time &begin, const ros::Time &end, ros::Time &target,int order)
     {
         auto begin_el   = std::find_if(data.begin(),data.end(),[&begin](std::pair<ros::Time, Eigen::Quaterniond> x) { return begin < x.first; });
-        // auto target_el  = std::find_if(data.begin(),data.end(),[&target](std::pair<ros::Time, Eigen::Quaterniond> x) { return target < x.first; });
         Eigen::Quaterniond target_angle = get_interpolate(target);
         auto end_el     = std::find_if(data.begin(),data.end(),[&end](std::pair<ros::Time, Eigen::Quaterniond> x) { return end < x.first; });
         
@@ -129,18 +155,11 @@ Eigen::Vector3d StampedDeque<Eigen::Vector3d>::get(ros::Time time)
         
         Eigen::Quaterniond lsm_value;
         double diff_t = (target - standard_time).toSec();
-        // lsm_value = Vector2Quaternion<double>(Eigen::Vector3d(  coeff_x(0) + diff_t * coeff_x(1) + pow(diff_t,2.0) * coeff_x(2),
-        //                                                         coeff_y(0) + diff_t * coeff_y(1) + pow(diff_t,2.0) * coeff_y(2),
-        //                                                         coeff_z(0) + diff_t * coeff_z(1) + pow(diff_t,2.0) * coeff_z(2))) * origin;
         Eigen::Vector3d lsm_vec = Eigen::Vector3d(coeff_x(order),coeff_y(order),coeff_z(order));
         for(int n= order - 1; n>=0; --n)//★ここ
         {
             lsm_vec = lsm_vec * diff_t + Eigen::Vector3d(coeff_x(n),coeff_y(n),coeff_z(n));
         }
-        // lsm_value = Vector2Quaternion<double>(Eigen::Vector3d(  coeff_x(0) + diff_t * coeff_x(1) + pow(diff_t,2.0) * coeff_x(2),
-        //                                                 coeff_y(0) + diff_t * coeff_y(1) + pow(diff_t,2.0) * coeff_y(2),
-        //                                                 coeff_z(0) + diff_t * coeff_z(1) + pow(diff_t,2.0) * coeff_z(2))) * origin;
-
         lsm_value = Vector2Quaternion<double>(lsm_vec) * origin;
 
         if(verbose){
@@ -154,23 +173,17 @@ Eigen::Vector3d StampedDeque<Eigen::Vector3d>::get(ros::Time time)
                 int index = (double)i/width*(angle_x.size()-1);
                 double value = angle_x(index) *gain + height/2;
                 int r = std::min(height-1,std::max(0,(int)value));
-                // printf("angle_x:%f\r\n",value);
                 plot_result_x.at<cv::Vec3b>(r,i) = cv::Vec3b(0,0,255);
 
 
                 value = angle_y(index) *gain + height/2;
                 r = std::min(height-1,std::max(0,(int)value));
-                // printf("angle_x:%f\r\n",value);
                 plot_result_x.at<cv::Vec3b>(r,i) = cv::Vec3b(0,255,0);
 
                 value = angle_z(index) *gain + height/2;
                 r = std::min(height-1,std::max(0,(int)value));
-                // printf("angle_x:%f\r\n",value);
                 plot_result_x.at<cv::Vec3b>(r,i) = cv::Vec3b(255,0,0);
 
-                // Eigen::Vector3d vec = Eigen::Vector3d(  coeff_x(0) + time(index) * coeff_x(1) + pow(time(index),2.0) * coeff_x(2),
-                //                                                     coeff_y(0) + time(index) * coeff_y(1) + pow(time(index),2.0) * coeff_y(2),
-                //                                                     coeff_z(0) + time(index) * coeff_z(1) + pow(time(index),2.0) * coeff_z(2));
                 Eigen::Vector3d vec = Eigen::Vector3d(coeff_x(order),coeff_y(order),coeff_z(coeff_z.size()-1));
                 for(int n= order - 1; n>=0; --n)
                 {
@@ -205,7 +218,6 @@ Eigen::Vector3d StampedDeque<Eigen::Vector3d>::get(ros::Time time)
             int r = std::min(height-1,std::max(0,(int)value));
             value = angle_x(index) *gain + height/2;
             int r2 = std::min(height-1,std::max(0,(int)value));
-            // cv::line(plot_result_x,cv::Point(i,r),cv::Point(i,r2),cv::Vec3b(0,0,255),2);//ここ
             for(int row = std::min(r,r2);row<std::max(r,r2);++row)
             {
                 plot_result_x.at<cv::Vec3b>(row,i)[2] = std::min(plot_result_x.at<cv::Vec3b>(row,i)[2]+255,255);
@@ -215,7 +227,6 @@ Eigen::Vector3d StampedDeque<Eigen::Vector3d>::get(ros::Time time)
             r = std::min(height-1,std::max(0,(int)value));
             value = angle_y(index) *gain + height/2;
             r2 = std::min(height-1,std::max(0,(int)value));
-            // cv::line(plot_result_x,cv::Point(i,r),cv::Point(i,r2),cv::Vec3b(0,255,0),2);//ここ
             for(int row = std::min(r,r2);row<std::max(r,r2);++row)
             {
                 plot_result_x.at<cv::Vec3b>(row,i)[1] = std::min(plot_result_x.at<cv::Vec3b>(row,i)[1]+255,255);
@@ -225,7 +236,6 @@ Eigen::Vector3d StampedDeque<Eigen::Vector3d>::get(ros::Time time)
             r = std::min(height-1,std::max(0,(int)value));
             value = angle_z(index) *gain + height/2;
             r2 = std::min(height-1,std::max(0,(int)value));
-            // cv::line(plot_result_x,cv::Point(i,r),cv::Point(i,r2),cv::Vec3b(255,0,0),2);//ここ
             for(int row = std::min(r,r2);row<std::max(r,r2);++row)
             {
                 plot_result_x.at<cv::Vec3b>(row,i)[0] = std::min(plot_result_x.at<cv::Vec3b>(row,i)[0]+255,255);

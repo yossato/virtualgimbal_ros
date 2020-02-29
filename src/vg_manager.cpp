@@ -1,3 +1,35 @@
+/* 
+ * Software License Agreement (BSD 3-Clause License)
+ * 
+ * Copyright (c) 2020, Yoshiaki Sato
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ * 
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 
+ * 3. Neither the name of the copyright holder nor the names of its
+ *    contributors may be used to endorse or promote products derived from
+ *    this software without specific prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
 #include "vg_manager.h"
 
 namespace virtualgimbal
@@ -36,14 +68,8 @@ manager::manager() : pnh_("~"), image_transport_(nh_), q(1.0, 0, 0, 0), q_filter
 
     camera_subscriber_ = image_transport_.subscribeCamera(image, 100, &manager::callback, this);
     imu_subscriber_ = pnh_.subscribe(imu_data, 10000, &manager::imu_callback, this);
-    // pub_ = image_transport_.advertise("camera/image", 1);
 
     camera_publisher_ = image_transport_.advertiseCamera("stabilized/image_rect",1);
-
-    // raw_quaternion_pub              = pnh_.advertise<sensor_msgs::Imu>("angle/raw", 1000);
-    // filtered_quaternion_pub         = pnh_.advertise<sensor_msgs::Imu>("angle/filtered", 1000);
-    // estimated_angular_velocity_pub  = pnh_.advertise<sensor_msgs::Imu>("angular_velocity/estimate",1000);
-    // measured_augular_velocity_pub   = pnh_.advertise<sensor_msgs::Imu>("angular_velocity/measured",1000);
 
     if(verbose)
     {
@@ -95,7 +121,6 @@ MatrixPtr manager::getR_LMS(ros::Time time, const ros::Time begin, const ros::Ti
     assert(ratio >= 0.0);
     assert((ratio - 1.0) < std::numeric_limits<double>::epsilon());
 
-    // ros::Time adjusted_begin = end + (begin - end) * ratio;
 
     Eigen::Quaterniond correction_quaternion = raw_angle_quaternion.get_correction_quaternion_using_least_squares_method(begin,end,time,order);
     
@@ -171,12 +196,6 @@ void manager::callback(const sensor_msgs::ImageConstPtr &image, const sensor_msg
     src_image.push_back(image->header.stamp, umat_src);
 
     // TODO: Limit queue size
-    // src_image.limit_data_length(10);
-    // ROS_INFO("src_image.size():%lu",src_image.size());
-
-    //publish image
-    // sensor_msgs::ImagePtr msg = cv_bridge::CvImage(image->header, "bgr8", umat_src.getMat(cv::ACCESS_READ)).toImageMsg();
-    // pub_.publish(msg);
     image_previous = image;
 }
 
@@ -187,7 +206,6 @@ void manager::imu_callback(const sensor_msgs::Imu::ConstPtr &msg)
         ROS_WARN("Input angular velocity and time stamp contains NaN. Skipped.");
         return;
     }
-    // Eigen::Vector3d w(msg->angular_velocity.x, msg->angular_velocity.y, msg->angular_velocity.z);
     Eigen::Quaterniond w_g(0.0, msg->angular_velocity.x, msg->angular_velocity.y, msg->angular_velocity.z);
 
     if (imu_previous)
@@ -205,7 +223,6 @@ void manager::imu_callback(const sensor_msgs::Imu::ConstPtr &msg)
         Eigen::Quaterniond w_o = q * w_g * q.conjugate();
         Eigen::Vector3d dq = Eigen::Vector3d(w_o.x(),w_o.y(),w_o.z()) * diff.toSec();
 
-        // Eigen::Vector3d dq = w * diff.toSec();
         
         q = q * Vector2Quaternion<double>(dq);
         q.normalize();
@@ -218,25 +235,9 @@ void manager::imu_callback(const sensor_msgs::Imu::ConstPtr &msg)
 
         Eigen::Vector3d vec = a1 * Quaternion2Vector<double>((q_filtered * q.conjugate()).normalized(), last_vector);
         q_filtered =  Vector2Quaternion<double>(vec) * q;
-        // q_filtered =  q * Vector2Quaternion<double>(vec);
         q_filtered.normalize();
 
         last_vector = vec;
-
-        // sensor_msgs::Imu angle_raw, angle_filtered;
-        // angle_raw.header = msg->header;
-        // angle_raw.orientation.w = q.w();
-        // angle_raw.orientation.x = q.x();
-        // angle_raw.orientation.y = q.y();
-        // angle_raw.orientation.z = q.z();
-        // raw_quaternion_pub.publish(angle_raw);
-
-        // angle_filtered.header = msg->header;
-        // angle_filtered.orientation.w = q_filtered.w();
-        // angle_filtered.orientation.x = q_filtered.x();
-        // angle_filtered.orientation.y = q_filtered.y();
-        // angle_filtered.orientation.z = q_filtered.z();
-        // filtered_quaternion_pub.publish(angle_filtered);
 
         raw_angle_quaternion.push_back(msg->header.stamp, q);
         filtered_angle_quaternion.push_back(msg->header.stamp, q_filtered);
@@ -250,8 +251,6 @@ ros::Time manager::get_begin_time(ros::Time time)
     ros::Time begin_time;
     if (camera_info_->line_delay_ >= 0.0)
     {
-        // std::cout << "time" << time << std::endl;
-        // std::cout << "ros::Duration(camera_info_->line_delay_ * (0 - camera_info_->height_ * 0.5)):" << ros::Duration(camera_info_->line_delay_ * (0 - camera_info_->height_ * 0.5)) << std::endl;
         begin_time = time + ros::Duration(camera_info_->line_delay_ * (0 - camera_info_->height_ * 0.5));
     }
     else
@@ -279,7 +278,6 @@ void manager::run()
 {
     std::string kernel_path = ros::package::getPath("virtualgimbal_ros")+"/cl/stabilizer_kernel.cl";
     ROS_INFO("kernel path:%s",  kernel_path.c_str());
-    // const char *kernel_name = "cl/stabilizer_kernel.cl";
     const char *kernel_function = "stabilizer_function";
 
     ros::Rate rate(120);
@@ -314,8 +312,6 @@ void manager::run()
             auto time_image_request = time_gyro_front + offset_time_ + half_height_delay;
             if(!src_image.is_available_after(time_image_request))
             {
-                // ROS_INFO("time_image_request:%d:%d",time_image_request.sec,time_image_request.nsec);
-                // src_image.print_all();
                 continue;
             }
 
@@ -330,7 +326,6 @@ void manager::run()
             auto time_gyro_first_line = time_image_center_line - half_height_delay - offset_time_;
             if(!raw_angle_quaternion.is_available_after(time_gyro_last_line)) continue;
 
-            // MatrixPtr R2 = getR(time_gyro_center_line);
             MatrixPtr R2 = getR_LMS(time_gyro_center_line,time_gyro_last_line-ros::Duration(lms_period_),time_gyro_last_line,lms_order_ );
             if(!allow_blue_space)
             {
@@ -354,10 +349,6 @@ void manager::run()
             float fy = camera_info_->fy_;
             float cx = camera_info_->cx_;
             float cy = camera_info_->cy_;
-            // float zoom = 1.f;
-
-            // ros::Time time;
-            // auto image = src_image.get(time_image_center_line,time);
 
 
             // Define destinatino image 
@@ -390,19 +381,16 @@ void manager::run()
                 fx_dst,fy_dst,cx_dst ,cy_dst,0.,0.,0.,0.,line_delay_dst);
             }
             UMatPtr umat_dst_ptr(new cv::UMat(cv::Size(image_width_dst,image_height_dst), CV_8UC4, cv::ACCESS_WRITE, cv::USAGE_ALLOCATE_DEVICE_MEMORY));
-            // cv::ocl::Image2D image_dst(*umat_dst_ptr, false, true);
            
             // Send arguments to kernel
             cv::ocl::Image2D image_src(image);
 
-            // cv::Mat mat_R = cv::Mat(R->size(), 1, CV_32F, R->data());
             cv::Mat mat_R = cv::Mat(R2->size(), 1, CV_32F, R2->data());
             cv::UMat umat_R = mat_R.getUMat(cv::ACCESS_READ, cv::USAGE_ALLOCATE_DEVICE_MEMORY);
             cv::ocl::Kernel kernel;
             getKernel(kernel_path.c_str(), kernel_function, kernel, context, build_opt);
             kernel.args(image_src, cv::ocl::KernelArg::WriteOnly(*umat_dst_ptr), cv::ocl::KernelArg::ReadOnlyNoSize(umat_R),ik1,ik2,ip1,ip2,fx,fy,cx,cy,fx_dst,fy_dst,cx_dst,cy_dst);
             size_t globalThreads[3] = {(size_t)image.cols, (size_t)image.rows, 1};
-            //size_t localThreads[3] = { 16, 16, 1 };
             bool success = kernel.run(3, globalThreads, NULL, true);
             if (!success)
             {
@@ -426,7 +414,7 @@ void manager::run()
                 info.P[5] *= zoom_; // fy
                 info.width = image_width_dst;
                 info.height = image_height_dst;
-                //TODO : cx cyも直す
+                //TODO : Modify cx and cy.
             }
             camera_publisher_.publish(*msg,info);
 

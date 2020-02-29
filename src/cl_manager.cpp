@@ -1,3 +1,35 @@
+/* 
+ * Software License Agreement (BSD 3-Clause License)
+ * 
+ * Copyright (c) 2020, Yoshiaki Sato
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ * 
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 
+ * 3. Neither the name of the copyright holder nor the names of its
+ *    contributors may be used to endorse or promote products derived from
+ *    this software without specific prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
 #include "cl_manager.h"
 using namespace std;
 void initializeCL(cv::ocl::Context &context)
@@ -8,7 +40,6 @@ void initializeCL(cv::ocl::Context &context)
              << flush;
         throw "OpenCL is not avaiable...";
     }
-    // cv::ocl::Context context;
     if (!context.create(cv::ocl::Device::TYPE_GPU))
     {
         cout << "Failed creating the context..." << endl;
@@ -63,23 +94,3 @@ void getKernel(const char *kernel_code_file_name, const char *kernel_function, c
 
     kernel = cv::ocl::Kernel(kernel_function, program);
 }
-
-// void runKernel(cv::UMat &umat_src, cv::UMat &umat_dst,cv::ocl::Kernel &kernel){
-//     cv::ocl::Image2D image(umat_src);
-//     cv::ocl::Image2D image_dst(umat_dst,false,true);
-//     float shift_x = 100.5;
-//     float shift_y = -50.0;
-//     // cv::ocl::Kernel kernel("color_shift_invert", program);
-//     kernel.args(image, image_dst,shift_x,shift_y);
-
-//     size_t globalThreads[3] = {(size_t)umat_src.cols, (size_t)umat_src.rows, 1};
-//     bool success = kernel.run(3, globalThreads, NULL, true);
-//     if (!success)
-//     {
-//         cout << "Failed running the kernel..." << endl << flush;
-//         throw "Failed running the kernel...";
-//     }
-
-//     // Download the dst data from the device (?)
-//     // cv::Mat mat_dst = umat_dst.getMat(cv::ACCESS_READ);
-// }

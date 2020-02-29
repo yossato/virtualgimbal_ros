@@ -1,3 +1,35 @@
+/* 
+ * Software License Agreement (BSD 3-Clause License)
+ * 
+ * Copyright (c) 2020, Yoshiaki Sato
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ * 
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ * 
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ * 
+ * 3. Neither the name of the copyright holder nor the names of its
+ *    contributors may be used to endorse or promote products derived from
+ *    this software without specific prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
 #ifndef __VIRTUALGIMAL_ROS_ROTATION_H_
 #define __VIRTUALGIMAL_ROS_ROTATION_H_
 
@@ -46,31 +78,15 @@ public:
 
     void pop_old(ros::Time time)
     {
-        // std::cout << "Input time:" << time << std::endl;
-        // std::cout << "Before" << std::endl;
-        // for(auto el:data)
-        // {
-        //     std::cout << el.first << std::endl;
-        // }
         auto it = std::find_if(data.begin(), data.end(), [&](std::pair<ros::Time, T> x) { return time <= x.first; });
 
         if(data.end() == it) return;
-        // if(data.begin() == it) return;
 
-        // To linear interpolate data, a previous data is required, so decrease iterator.
-        
-        // --it;
-        // TODO:先頭を消せるようにする。ここ変。
         if (data.begin() != it)
         {
             data.erase(data.begin(), it);
         }
 
-        // std::cout << "After" << std::endl;
-        // for(auto el:data)
-        // {
-        //     std::cout << el.first << std::endl;
-        // }
         };
 
     void pop_front()
@@ -112,12 +128,7 @@ public:
             return false;
         }
         auto it = std::find_if(data.begin(), data.end(), [&](std::pair<ros::Time, T> x) { return time <= x.first; });
-        // if (data.begin() == it)
-        // {
-        //     return false;
-        // }
-        // else 
-        if (data.end() == it)   // Not found
+        if (data.end() == it)
         {
             return false;
         }
@@ -141,7 +152,7 @@ public:
         }
 
         auto it = std::find_if(data.begin(), data.end(), [&](std::pair<ros::Time, T> x) { return time <= x.first; });
-        if (data.end() == it)   // Not found
+        if (data.end() == it)
         {
             throw;
         }
@@ -160,7 +171,7 @@ public:
         }
 
         auto it = std::find_if(data.begin(), data.end(), [&](std::pair<ros::Time, T> x) { return request_time <= x.first; });
-        if (data.end() == it)   // Not found
+        if (data.end() == it)
         {
             throw;
         }
@@ -180,7 +191,7 @@ public:
     void print_all()
     {
         for(auto &el:data){
-            std::cout << el.first << std::endl;//<< ":" << el.second.coeffs().transpose() << std::endl;
+            std::cout << el.first << std::endl;
         }
     }
 
