@@ -1,7 +1,7 @@
 # virtualgimbal_ros
-Inertial measurement Unit (IMU)で計測した角速度に基づいて、ビデオ映像のブレを補正して安定化します。  
+VirtualGimbal ROSは、Inertial measurement Unit (IMU)で計測した角速度に基づいてブレを補正して、ビデオ映像を安定化します。  
 本パッケージは、カメラ映像を通じたロボット操縦時の視認性向上、画像認識・物体追跡性能向上および映像撮影品質の向上を目的としています。  
-1920 x 1080 pixel, 30 fpsのRGB動画に対して、OpenCLによるGPU処理によりノートPCのCPU(Intel Core i7-8550U)内蔵GPUでリアルタイムで安定化が動作することを確認しています。  
+Intel RealSense D435iのRGB映像の最大サイズである1920 x 1080 pixel, 30 fpsのビデオストリームに対して、OpenCLによるGPU処理によりノートPCのCPU(Intel Core i7-8550U)内蔵GPUでリアルタイムで安定化が動作することを確認しています。  
   
 # 1. Overview  
 このパッケージは、動画をジャイロセンサで計測した角速度で安定化するvirtualgimbal_ros_nodeと、動画とジャイロセンサ間のタイムスタンプのオフセットを精密測定するsynchronizer_nodeからなります。  
@@ -9,15 +9,15 @@ Inertial measurement Unit (IMU)で計測した角速度に基づいて、ビデ�
   
 # 1.1 Install dependencies  
 本パッケージは Ubuntu 16.04 と ROS Kinetic で動作確認をしました。  
-動作には次のOpenCLのセットアップとGPUの種類に応じたドライバのインストールが必要です。  
+動作には次のOpenCL関係のライブラリが必要です。  
 
 ```
 # apt install ocl-icd-libopencl1 opencl-headers clinfo ocl-icd-opencl-dev  
 ```
+加えて、GPUの種類に応じたドライバのインストールが必要です。
 
 ### 1.1.1 NVIDIA GPU  
-NVIDIAのGPUを使用する場合は[ディスプレイドライバ](https://www.nvidia.com/download/index.aspx)をインストールしてください。
-
+NVIDIAのGPUを使用する場合は[ディスプレイドライバ](https://www.nvidia.com/download/index.aspx)をインストールしてください。  
 
 ### 1.1.2 Intel HD Graphics  
 IntelのCPU内蔵GPUを使う場合は次のコマンドによりOpenCL用のドライバである[Intel(R) Graphics Compute Runtime for OpenCL(TM)](https://github.com/intel/compute-runtime/blob/master/documentation/Neo_in_distributions.md)をインストールしてください。  
@@ -27,23 +27,26 @@ IntelのCPU内蔵GPUを使う場合は次のコマンドによりOpenCL用のド
 # apt install intel-opencl-icd
 ```
 
+### 1.1.3 AMD
+T.B.D.  
+
 # 2. Mini Tutorial
-[RealSense D435iで撮影した動画のrosbag](https://drive.google.com/uc?id=1uaRjiDGhFVExLlXTnzp7vVMDJGi7vvzC)をダウンロードして安定化動作を試すことができます。以下のコマンドを別々のターミナルで実行してください。    
+サンプル動画で安定化の動作を体験してみます。まず[RealSense D435iで撮影した動画のrosbag](https://drive.google.com/uc?id=1uaRjiDGhFVExLlXTnzp7vVMDJGi7vvzC)をダウンロードしてください。  
+以下のコマンドを別々のターミナルで実行してください。    
 ```
 $ roslaunch virtualgimbal_ros stabilize_realsense_rgb.launch  
-$ rosbag play 2019-09-07-14-17-26.bag --clock  
+$ rosbag play soleil_s.bag --clock  
 ```
-rqtで可視化しましょう。  
-```  
-$ rqt  
-```  
-左が安定化前の動画で右が安定化後の動画です。安定化後は画像が拡大されて周囲が切り取られますが画像内の動きが少なく動きが安定化しています。  
-![rqt_image](https://github.com/yossato/images/blob/master/soleil-hill-park.png?raw=true) 
+rqtのimage_viewの画面が2個起動します。
+Input imageが安定化前の動画で、Stabilized Imageが安定化後の動画です。安定化後は画像が拡大されて周囲が切り取られますが画像内の動きが少なく動きが安定化しています。  
+![Input Image ](https://github.com/yossato/images/blob/master/Screenshot%20from%202020-02-29%2023-10-14.png?raw=true)
+![Stabilized Image ](https://github.com/yossato/images/blob/master/Screenshot%20from%202020-02-29%2023-10-10.png?raw=true)  
+
   
 # 3. Nodes
 ## 3.1 virtualgimbal_ros_node  
+virtualgimbal_ros_node はカメラで撮影した動画とIMUで計測した角速度から、安定化した動画を生成します。
 ![nodes](https://github.com/yossato/images/blob/master/nodes.png?raw=true)  
-カメラで撮影した動画と、IMUで計測した角速度から、安定化した動画を生成します。
 
 ### 3.1.1 Subscribed Topics
 #### image_raw (sensor_msgs/Image)  
@@ -69,15 +72,15 @@ Stabilized camera metadata.
 |imu_data|string|imu_data|入力角速度トピック|
 |zoom_factor|float|1.3|画像のズーム倍率。1以上の値を設定する。値を大きくすると画像が拡大され手ブレ補正能力が向上するが、画像の四隅の切り取られる量が増える。|
 |enable_trimming|bool|true|trueに設定すると画像の四隅を切り取った分だけ出力画像サイズを小さくする。falseに設定すると入力画像と出力画像のサイズを等しくする。出力画像は引き伸ばされる。trueにしたほうがtopicのデータ量は減少するが画像サイズが一般的ではないサイズになる。|
-|offset_time|double|0|ジャイロセンサと画像ストリームのタイムスタンプのオフセット時間(秒)。synchronizer_nodeにより計測できる。|
+|offset_time|double|0|ジャイロセンサと画像ストリームのタイムスタンプのオフセット時間(秒)。synchronizer_nodeにより計測できる。カメラによって値が異なる。|
 |verbose|bool|false|デバック機能を提供する。trueで各種ログが有効化され、安定化の様子がグラフで表示される。falseでログ機能を停止する。|
-|allow_blue_space|bool|false|trueで画像に青い部分が生じることを許すと、ブレ補正能力が大幅に向上しますがカメラのブレが大きくなり限界を迎えると画面の端に青い部分が生じます。falseにするとブレ補正能力が低下しますが青い部分ができないようにします。|
+|allow_blue_space|bool|false|trueで画像に青い部分が生じることを許すと、ブレ補正能力が大幅に向上する。しかし、カメラのブレが大きくなりすぎて限界を迎えると画面の端に青い部分が生じる。falseにするとブレ補正能力が低下するが、画面端に青い部分が生じない。|
 |lsm_period|double|1.5|最小二乗法(least squares method)を計算する時間の長さ(秒)。値を大きくすると安定化能力が向上するが、急なカメラの動きに追従できなくなる。値を小さくすると安定化能力が低下するがカメラの急な動きに追従できるようになる。|
 |lsm_order|double|1|最小二乗法でフィッティングする曲線の次数。1だと1次式の直線でフィッティングする。2だと2次式の放物線でフィッティングする。次数を上げると追従性が向上するが安定化能力が低下する。|
   
 ## 3.1 synchronizer_node  
-動画とIMU間のタイムスタンプのオフセットを精密測定するノードです。動画のタイムスタンプはカメラのシャッターの露光タイミングの定義方法により変わります。そのため、IMUを利用して安定化するときに、定義の違いによるタイミングのわずかな差が安定化品質の問題になります。動画の安定化にはミリ秒以下の精度の同期が必要になります。  
-virtualgimbal_rosではカメラのシャッターの露光中心をタイムスタンプの基準として利用しています。このnodeはSum of Absolute Differences (SAD)により動画とIMUの角速度の相関を計算し最も良く相関があるタイミングを計算します。もう少し詳しく説明すると動画からオプティカルフローを計算し、オプティカルフローから角速度を推定し、推定された角速度と、IMUにより計測された角速度の相関を、時間を少しずつ変化させながら計算します。得られたオフセットはstabilize.launchのparamのoffset_timeにセットして使います。  
+synchronizer_node は動画とIMU間のタイムスタンプのオフセットを精密測定するノード。一般的に、カメラの動画とIMUの角速度のタイムスタンプには僅かな時刻の差であるオフセットがある。動画の安定化にはミリ秒以下の精度の同期が必要になるため、このオフセットを正しく設定しないと動画の安定化品質が低下する。  
+virtualgimbal_rosではカメラのシャッターの露光中心をタイムスタンプの基準として利用している。このnodeはSum of Absolute Differences (SAD)により動画とIMUの角速度の相関を計算し最も良く相関があるタイミングを計算する。もう少し詳しく説明すると動画からオプティカルフローを計算し、オプティカルフローから角速度を推定し、推定された角速度と、IMUにより計測された角速度の相関を、オフセットを少しずつ変化させながら計算する。相関が一番良いオフセットの部分で一番SADの値が小さくなる。得られたオフセットはstabilize.launchのparamのoffset_timeにセットして使用する。  
   
 ### 3.1.1 Subscribed Topics
 #### image_raw (sensor_msgs/Image)  
@@ -102,19 +105,19 @@ Parameter
 ## 4.1 stabilize.launch
 イメージストリームを安定化します。  
 
-### 4.2 stabilize_realsense_rgb.launch
-Intel RealSense D435iのRGBイメージストリームについてIMUの角速度を用いて安定化します。paramとしてD435iのトピック名を指定してstabilize.launchを起動します。
+## 4.2 stabilize_realsense_rgb.launch
+Intel RealSense D435iのRGBイメージストリームについてIMUの角速度を用いて安定化します。paramとしてD435iのトピック名を指定してstabilize.launchを起動します。画像サイズは1920x1080 pixelを想定しています。
 
-### stabilize_realsense_ir.launch
+## 4.3 stabilize_realsense_ir.launch
 Intel RealSense D435iのirカメラの左側のイメージストリームについてIMUの角速度を用いて安定化します。paramとしてD435iのトピック名を指定してstabilize.launchを起動します。
 
-### synchronizer.launch
+## 4.4 synchronizer.launch
 画像ストリームとIMUの時刻同期をします。イメージストリームについてIMUの角速度と同期のタイミングを計算します。
 
-### synchronize_realsense_rgb.launch
+## 4.5 synchronize_realsense_rgb.launch
 Intel RealSense D435iのRGBイメージストリームとIMUの同期を取ります。
 
-### synchronize_realsense_ir.launch
+## 4.6 synchronize_realsense_ir.launch
 RGBと同様にIRイメージストリームについてもIMUとの同期を取ります。
 
 
