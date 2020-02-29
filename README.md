@@ -5,7 +5,7 @@ Intel RealSense D435iのRGB映像の最大サイズである1920 x 1080 pixel, 3
   
 # 1. Overview  
 このパッケージは、動画をジャイロセンサで計測した角速度で安定化するvirtualgimbal_ros_nodeと、動画とジャイロセンサ間のタイムスタンプのオフセットを精密測定するsynchronizer_nodeからなります。  
-[![](https://img.youtube.com/vi/ft6v7h5kN6g&feature=youtu.be/0.jpg)](https://www.youtube.com/watch?v=ft6v7h5kN6g&feature=youtu.be) 
+[![](https://github.com/yossato/images/blob/master/youtube.png?raw=true)](https://github.com/yossato/images/blob/master/youtube.png?raw=true) 
   
 # 1.1 Install dependencies  
 本パッケージは Ubuntu 16.04 と ROS Kinetic で動作確認済みです。  
