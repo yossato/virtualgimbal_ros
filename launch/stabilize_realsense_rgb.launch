@@ -1,5 +1,6 @@
 <?xml version="1.0"?>
 <launch>
+    <!-- Launch VirtualGimbal ROS -->
     <include file="$(find virtualgimbal_ros)/launch/stabilize.launch">
         <arg name="image"           value="/camera/color/image_raw"/>
         <arg name="imu_data"        value="/camera/gyro/sample"/>
@@ -12,4 +13,16 @@
         <arg name="verbose"         value="false"/>                 <!-- For Debug -->
         <arg name="allow_blue_space" value="false"/>
     </include>
+
+    <!-- Show input image -->
+    <node name="raw" pkg="image_view" type="image_view" respawn="false" output="screen">
+        <remap from="image" to="/camera/color/image_raw" />
+        <param name="window_name" value="Input image"/>
+    </node>
+
+    <!-- Show stabilized image -->
+    <node name="stabilized" pkg="image_view" type="image_view" respawn="false" output="screen">
+        <remap from="image" to="/stabilized/image_rect" />
+        <param name="window_name" value="Stabilized image"/>
+    </node>
 </launch>
