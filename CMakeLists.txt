@@ -7,6 +7,14 @@ set (CMAKE_CXX_STANDARD 11)
 
 find_package(OpenCV 3 REQUIRED )
 
+find_package(Eigen3 REQUIRED)
+
+# Eigen 3.2 (Wily) only provides EIGEN3_INCLUDE_DIR, not EIGEN3_INCLUDE_DIRS
+if(NOT EIGEN3_INCLUDE_DIRS)
+  set(EIGEN3_INCLUDE_DIRS ${EIGEN3_INCLUDE_DIR})
+endif()
+
+
 configure_file(cl/stabilizer_kernel.cl cl/stabilizer_kernel.cl)
 
 # find_package(OpenCV 4 REQUIRED # Build error
@@ -14,7 +22,6 @@ configure_file(cl/stabilizer_kernel.cl cl/stabilizer_kernel.cl)
 # PATHS /usr/local 
 # NO_DEFAULT_PATH)
 
-include_directories(/usr/local/include/eigen3)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -124,6 +131,7 @@ catkin_package(
 #  LIBRARIES virtualgimbal_ros
 #  CATKIN_DEPENDS roscpp sensor_msgs std_msgs
 #  DEPENDS system_lib
+  DEPENDS EIGEN3
 )
 
 ###########
@@ -135,6 +143,7 @@ catkin_package(
 include_directories(
 include
   ${catkin_INCLUDE_DIRS}
+  SYSTEM ${EIGEN3_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
