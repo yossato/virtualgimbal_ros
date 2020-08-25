@@ -34,7 +34,7 @@
 __constant sampler_t samplerLN = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP_TO_EDGE | CLK_FILTER_NEAREST;
 
 float triangle_area(float2 p1, float2 p2, float2 p3){
-   return 0.5*fabs((p1[0]-p3[0])*(p2[1]-p3[1])-(p2[0]-p3[0])*(p1[1]-p3[1]));
+   return 0.5*fabs((p1.x-p3.x)*(p2.y-p3.y)-(p2.x-p3.x)*(p1.y-p3.y));
 }
 
 float3 baryventrid_coordinate(float2 pt, float2 p1, float2 p2, float2 p3)
@@ -48,7 +48,7 @@ float3 baryventrid_coordinate(float2 pt, float2 p1, float2 p2, float2 p3)
 
 float sign (float2 p1, float2 p2, float2 p3)
 {
-    return (p1[0] - p3[0]) * (p2[1] - p3[1]) - (p2[0] - p3[0]) * (p1[1] - p3[1]);
+    return (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y);
 }
 
 bool point_in_triangle (float2 pt, float2 v1, float2 v2, float2 v3)
@@ -72,9 +72,9 @@ float2 warp_undistort(
    float2 x1 = (p-c)/f;
    float r2 = dot(x1,x1);
    float2 x2 = x1*(1.f + k1*r2+k2*r2*r2);
-   x2 += (float2)(2.f*p1*x1[0]*x1[1]+p2*(r2+2.f*x1[0]*x1[0]), p1*(r2+2.f*x1[1]*x1[1])+2.f*p2*x1[0]*x1[1]);
-   float3 x3 = (float3)(x2[0],x2[1],1.0);
-   __constant float* R = rotation_matrix + convert_int( 9*p[1]);
+   x2 += (float2)(2.f*p1*x1.x*x1.y+p2*(r2+2.f*x1.x*x1.x), p1*(r2+2.f*x1.y*x1.y)+2.f*p2*x1.x*x1.y);
+   float3 x3 = (float3)(x2.x,x2.y,1.0);
+   __constant float* R = rotation_matrix + convert_int( 9*p.y);
    float3 XYZ = (float3)(R[0] * x3.x + R[1] * x3.y + R[2] * x3.z,
                          R[3] * x3.x + R[4] * x3.y + R[5] * x3.z,
                          R[6] * x3.x + R[7] * x3.y + R[8] * x3.z);
@@ -128,8 +128,8 @@ __kernel void stabilizer_function(
    int2 uvMin = convert_int2(floor(min(min(uv0,uv1),min(uv2,uv3))));
    int2 uvMax = convert_int2(ceil(max(max(uv0,uv1),max(uv2,uv3))));
 
-   for(int v= uvMin[1];v<=uvMax[1];++v){
-      for(int u=uvMin[0];u<=uvMax[0];++u){
+   for(int v= uvMin.y;v<=uvMax.y;++v){
+      for(int u=uvMin.x;u<=uvMax.x;++u){
          int2 uvt = (int2)(u,v);
          if(any(uvt >= size_dst)) continue;
          if(any(uvt < 0)) continue;
@@ -137,10 +137,10 @@ __kernel void stabilizer_function(
          float2 uw_cam;
          if(point_in_triangle(convert_float2(uvt),uv0,uv1,uv3)){
             float3 ratio = baryventrid_coordinate(convert_float2(uvt),uv0,uv1,uv3);
-            uw_cam = uv0_*ratio[0]+uv1_*ratio[1]+uv3_*ratio[2];
+            uw_cam = uv0_*ratio.x+uv1_*ratio.y+uv3_*ratio.z;
          }else if(point_in_triangle(convert_float2(uvt),uv1,uv2,uv3)){
             float3 ratio = baryventrid_coordinate(convert_float2(uvt),uv1,uv2,uv3);
-            uw_cam = uv1_*ratio[0]+uv2_*ratio[1]+uv3_*ratio[2];
+            uw_cam = uv1_*ratio.x+uv2_*ratio.y+uv3_*ratio.z;
          }else{
             continue;
          }
