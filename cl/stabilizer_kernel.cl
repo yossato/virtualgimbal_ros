@@ -46,7 +46,8 @@ float3 baryventrid_coordinate(float2 pt, float2 p1, float2 p2, float2 p3)
    return (float3)(a1,a2,a3)/total;
 }
 
-float sign (float2 p1, float2 p2, float2 p3)
+// WARNING (FCA) Not sure what this method name should be (original name 'sign' collide with some other method in cl_kernel.h)
+float triangle_sign (float2 p1, float2 p2, float2 p3)
 {
     return (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y);
 }
@@ -55,9 +56,9 @@ bool point_in_triangle (float2 pt, float2 v1, float2 v2, float2 v3)
 {
     bool b1, b2, b3;
  
-    b1 = sign(pt, v1, v2) < 0.0f;
-    b2 = sign(pt, v2, v3) < 0.0f;
-    b3 = sign(pt, v3, v1) < 0.0f;
+    b1 = triangle_sign(pt, v1, v2) < 0.0f;
+    b2 = triangle_sign(pt, v2, v3) < 0.0f;
+    b3 = triangle_sign(pt, v3, v1) < 0.0f;
       
     return ((b1 == b2) && (b2 == b3));
 }
