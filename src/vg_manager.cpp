@@ -317,7 +317,7 @@ void manager::run()
 
             // Get time stamp of center row of the image
             ros::Time time_image_center_line;
-            auto image = src_image.get(time_image_request,time_image_center_line);////??????????????/
+            auto image = src_image.get(time_image_request,time_image_center_line);
             
             
             // Check availability of gyro angle data at the time stamp of the last row of the image

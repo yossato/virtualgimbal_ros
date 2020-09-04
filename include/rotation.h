@@ -39,7 +39,6 @@
 #include "least_squares_method.h"
 namespace virtualgimbal
 {
-
      enum DequeStatus
     {
         GOOD = 0,
@@ -54,7 +53,7 @@ template <class T>
 class StampedDeque
 {
 public:
-
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
     StampedDeque(bool verbose = false) : verbose(verbose) 
     {};

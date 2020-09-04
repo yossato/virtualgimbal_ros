@@ -62,6 +62,7 @@ using UMatPtr = std::unique_ptr<cv::UMat>;
 class manager
 {
 public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     manager();
     ~manager();
     void run();
