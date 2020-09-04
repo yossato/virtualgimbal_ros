@@ -32,6 +32,8 @@
 
 #include "least_squares_method.h"
 
+#include <vector>
+
 namespace virtualgimbal
 {
 
