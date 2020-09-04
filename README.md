@@ -8,7 +8,7 @@ VirtualGimbal ROSはOpenCLによるGPU処理で高速に動作します。例え
 [![](https://github.com/yossato/images/blob/master/youtube.png?raw=true)](https://www.youtube.com/watch?v=ft6v7h5kN6g&feature=youtu.be) 
   
 # 1.1 Install dependencies  
-本パッケージは Ubuntu 16.04 と ROS Kinetic で動作確認済みです。  
+本パッケージは Ubuntu 16.04 と ROS Kinetic で動作確認済みです。最近Melodicでも動作確認が取れました。    
 動作には次のOpenCL関係のライブラリが必要です。  
 
 ```
