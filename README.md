@@ -31,7 +31,7 @@ IntelのCPU内蔵GPUを使う場合は次のコマンドによりOpenCL用のド
 T.B.D.  
 
 # 2. Mini Tutorial
-サンプル動画で安定化の動作を体験してみます。まず[RealSense D435iで撮影した動画のrosbag](https://drive.google.com/uc?id=1uaRjiDGhFVExLlXTnzp7vVMDJGi7vvzC)をダウンロードします。  
+サンプル動画で安定化の動作を体験してみます。まず[RealSense D435iで撮影した動画のrosbag](https://www.dropbox.com/s/43ucvmjfjhxeyzg/soleil.bag?dl=1)をダウンロードします。  
 以下のコマンドを別々のターミナルで実行してください。    
 ```
 $ roslaunch virtualgimbal_ros stabilize_realsense_rgb.launch  
