@@ -31,7 +31,7 @@
  */
 
 #include "ros/ros.h"
-#include "vg_manager.h"
+#include "vg_calibrator.h"
 #include "synchronization_manager.h"
 
 int main(int argc, char **argv)

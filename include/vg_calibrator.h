@@ -52,6 +52,11 @@
 
 namespace virtualgimbal
 {
+using MatrixPtr = std::shared_ptr<std::vector<float>>;
+
+using Rotation = StampedDeque<Eigen::Quaterniond>;
+using Image = StampedDeque<cv::UMat>;
+using UMatPtr = std::unique_ptr<cv::UMat>;
 class calibrator
 {
 public:
