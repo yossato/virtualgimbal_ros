@@ -178,6 +178,18 @@ src/rotation.cpp
 src/least_squares_method.cpp
 )
 
+add_executable(line_delay_estimator_node src/line_delay_estimator.cpp
+src/vg_calibrator.cpp
+src/rotation.cpp
+src/param.cpp
+src/camera_information.cpp
+src/cl_manager.cpp
+src/SO3Filters.cpp
+src/synchronization_manager.cpp
+src/angular_velocity_estimator.cpp
+src/least_squares_method.cpp
+)
+
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
@@ -198,6 +210,9 @@ target_link_libraries(synchronizer_node
   ${catkin_LIBRARIES}  ${OpenCV_LIBS}
 )
 
+target_link_libraries(line_delay_estimator_node
+  ${catkin_LIBRARIES}  ${OpenCV_LIBS}
+)
 
 add_definitions(-DEIGEN_NO_DEBUG -DEIGEN_MPL2_ONLY)
 
