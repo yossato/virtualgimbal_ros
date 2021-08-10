@@ -343,6 +343,8 @@ cv::Mat create_markers_image2()
     return boardImage;
 }
 
+
+
 void calibrator::run()
 {
     create_markers_image();

@@ -169,6 +169,7 @@ src/SO3Filters.cpp
 src/synchronization_manager.cpp
 src/angular_velocity_estimator.cpp
 src/least_squares_method.cpp
+src/aruco_board.cpp
 )
 
 add_executable(synchronizer_node src/sync_main.cpp
