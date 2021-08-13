@@ -5,7 +5,7 @@ project(virtualgimbal_ros)
 # add_compile_options(-march=native)
 set (CMAKE_CXX_STANDARD 11)
 
-find_package(OpenCV 3 REQUIRED )
+find_package(OpenCV REQUIRED )
 
 find_package(Eigen3 REQUIRED)
 

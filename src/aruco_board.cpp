@@ -86,7 +86,7 @@ bool readDetectorParameters(string filename, Ptr<aruco::DetectorParameters> &par
     fs["minCornerDistanceRate"] >> params->minCornerDistanceRate;
     fs["minDistanceToBorder"] >> params->minDistanceToBorder;
     fs["minMarkerDistanceRate"] >> params->minMarkerDistanceRate;
-    // fs["cornerRefinementMethod"] >> params->cornerRefinementMethod;
+    fs["cornerRefinementMethod"] >> params->cornerRefinementMethod;
     fs["cornerRefinementWinSize"] >> params->cornerRefinementWinSize;
     fs["cornerRefinementMaxIterations"] >> params->cornerRefinementMaxIterations;
     fs["cornerRefinementMinAccuracy"] >> params->cornerRefinementMinAccuracy;
@@ -138,8 +138,8 @@ int main_old(int argc, char *argv[]) {
             return 0;
         }
     }
-    // detectorParams->cornerRefinementMethod = aruco::CORNER_REFINE_SUBPIX; // do corner refinement in markers
-    detectorParams->doCornerRefinement = true;
+    detectorParams->cornerRefinementMethod = aruco::CORNER_REFINE_SUBPIX; // do corner refinement in markers
+    // detectorParams->doCornerRefinement = true;
 
     String video;
     if(parser.has("v")) {
