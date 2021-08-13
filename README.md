@@ -35,7 +35,7 @@ T.B.D.
 以下のコマンドを別々のターミナルで実行してください。    
 ```
 $ roslaunch virtualgimbal_ros stabilize_realsense_rgb.launch  
-$ rosbag play soleil_s.bag --clock  # rosbagの置かれたディレクトリで実行  
+$ rosbag play soleil.bag --clock  # rosbagの置かれたディレクトリで実行  
 ```
 rqtのimage_viewの画面が2個起動します。
 Input imageが安定化前の動画で、Stabilized Imageが安定化後の動画です。安定化後は画像が拡大されて周囲が切り取られますが画像内の動きが少なく動きが安定化しています。  
