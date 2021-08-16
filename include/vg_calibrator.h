@@ -47,7 +47,7 @@
 #include "camera_information.h"
 #include "cl_manager.h"
 #include "SO3Filters.h"
-
+#include "aruco_board.h"
 
 
 namespace virtualgimbal
@@ -112,6 +112,8 @@ private:
     // LMS
     double lms_period_;
     int lms_order_;
+
+    cv::Ptr<cv::aruco::DetectorParameters> detector_params_ = cv::aruco::DetectorParameters::create();
 };
 
 }

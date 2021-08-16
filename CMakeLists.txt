@@ -189,6 +189,7 @@ src/SO3Filters.cpp
 src/synchronization_manager.cpp
 src/angular_velocity_estimator.cpp
 src/least_squares_method.cpp
+src/aruco_board.cpp
 )
 
 ## Rename C++ executable without prefix
