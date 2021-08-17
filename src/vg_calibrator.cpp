@@ -63,14 +63,17 @@ the use of this software, even if advised of the possibility of such damage.
 
 #include "vg_calibrator.h"
 #include <opencv2/aruco/charuco.hpp>
-
+#include <ros/package.h>
 namespace virtualgimbal
 {
+
+
 
 calibrator::calibrator() : pnh_("~"), image_transport_(nh_), q(1.0, 0, 0, 0), q_filtered(1.0, 0, 0, 0),
  last_vector(0, 0, 0), param(pnh_),
  zoom_(1.3f),cutoff_frequency_(0.5),enable_trimming_(true),
- offset_time_(ros::Duration(0.0)), verbose(false), allow_blue_space(false), lms_period_(1.5), lms_order_(1)
+ offset_time_(ros::Duration(0.0)), verbose(false), allow_blue_space(false), lms_period_(1.5), lms_order_(1),
+ arr_(pnh_)
 {
     std::string image = "/image_rect";
     std::string imu_data = "/imu_data";
@@ -110,17 +113,6 @@ calibrator::calibrator() : pnh_("~"), image_transport_(nh_), q(1.0, 0, 0, 0), q_
     }
 
     raw_angle_quaternion = Rotation(verbose);
-
-    std::string detector_parameter_file_path;
-    if(pnh_.getParam("detector_parameters_file",detector_parameter_file_path)) 
-    {
-        bool readOk = readDetectorParameters(detector_parameter_file_path, detector_params_);
-        if(!readOk) {
-            std::cerr << "Invalid detector parameters file" << std::endl;
-            std::exit(EXIT_FAILURE);
-        }
-    }
-    detector_params_->cornerRefinementMethod = cv::aruco::CORNER_REFINE_SUBPIX; // do corner refinement in markers
 
     // OpenCL
     initializeCL(context);
@@ -194,6 +186,11 @@ MatrixPtr calibrator::getR_LMS(ros::Time time, const ros::Time begin, const ros:
 
 void calibrator::callback(const sensor_msgs::ImageConstPtr &image, const sensor_msgs::CameraInfoConstPtr &ros_camera_info)
 {
+
+    {
+        // Write aruco marker code here.
+    }
+
     if (!camera_info_)
     {
         camera_info_ = std::make_shared<CameraInformation>(std::string("ros_camera"), ros_camera_info->distortion_model, Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0),

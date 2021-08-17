@@ -113,7 +113,7 @@ private:
     double lms_period_;
     int lms_order_;
 
-    cv::Ptr<cv::aruco::DetectorParameters> detector_params_ = cv::aruco::DetectorParameters::create();
+    ArucoRos arr_;
 };
 
 }
