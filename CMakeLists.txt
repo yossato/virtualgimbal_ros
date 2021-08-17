@@ -16,6 +16,7 @@ endif()
 
 
 configure_file(cl/stabilizer_kernel.cl cl/stabilizer_kernel.cl)
+configure_file(param/detector_params.yaml param/detector_params.yaml)
 
 # find_package(OpenCV 4 REQUIRED # Build error
 # NO_MODULE 
