@@ -34,7 +34,7 @@ the use of this software, even if advised of the possibility of such damage.
 #include <opencv2/aruco.hpp>
 #include <vector>
 #include <iostream>
-
+#include <aruco_board.h>
 using namespace std;
 using namespace cv;
 
@@ -56,6 +56,86 @@ const char* keys  =
         "{rs       |       | Apply refind strategy }"
         "{r        |       | show rejected candidates too }";
 }
+
+ArucoRos::ArucoRos(ros::NodeHandle &pnh) : pnh_(pnh), detector_params_(aruco::DetectorParameters::create())
+{
+    bool success = 
+    readDetectorParams() && 
+    readMarkerParams();
+
+    ROS_ERROR("Failed to get params");
+    if(!success) std::exit(EXIT_FAILURE);
+
+    // dictionary_ = aruco::getPredefinedDictionary(aruco::PREDEFINED_DICTIONARY_NAME(dictionary_id_));
+
+
+    // // create board object
+    // gridboard_ =
+    //     aruco::GridBoard::create(markers_X_, markers_Y_, marker_length_, marker_separation_, dictionary_);
+    // board_ = gridboard_.staticCast<aruco::Board>();
+}
+
+bool ArucoRos::readDetectorParams()
+{ 
+    bool retval = 
+    pnh_.getParam("adaptiveThreshWinSizeMin",detector_params_->adaptiveThreshWinSizeMin) && 
+    pnh_.getParam("adaptiveThreshWinSizeMax",detector_params_->adaptiveThreshWinSizeMax) && 
+    pnh_.getParam("adaptiveThreshWinSizeStep",detector_params_->adaptiveThreshWinSizeStep) && 
+    pnh_.getParam("adaptiveThreshConstant",detector_params_->adaptiveThreshConstant) && 
+    pnh_.getParam("minMarkerPerimeterRate",detector_params_->minMarkerPerimeterRate) && 
+    pnh_.getParam("maxMarkerPerimeterRate",detector_params_->maxMarkerPerimeterRate) && 
+    pnh_.getParam("polygonalApproxAccuracyRate",detector_params_->polygonalApproxAccuracyRate) && 
+    pnh_.getParam("minCornerDistanceRate",detector_params_->minCornerDistanceRate) && 
+    pnh_.getParam("minDistanceToBorder",detector_params_->minDistanceToBorder) && 
+    pnh_.getParam("minMarkerDistanceRate",detector_params_->minMarkerDistanceRate) && 
+    pnh_.getParam("cornerRefinementMethod",detector_params_->cornerRefinementMethod) && 
+    pnh_.getParam("cornerRefinementWinSize",detector_params_->cornerRefinementWinSize) && 
+    pnh_.getParam("cornerRefinementMaxIterations",detector_params_->cornerRefinementMaxIterations) && 
+    pnh_.getParam("cornerRefinementMinAccuracy",detector_params_->cornerRefinementMinAccuracy) && 
+    pnh_.getParam("markerBorderBits",detector_params_->markerBorderBits) && 
+    pnh_.getParam("perspectiveRemovePixelPerCell",detector_params_->perspectiveRemovePixelPerCell) && 
+    pnh_.getParam("perspectiveRemoveIgnoredMarginPerCell",detector_params_->perspectiveRemoveIgnoredMarginPerCell) && 
+    pnh_.getParam("maxErroneousBitsInBorderRate",detector_params_->maxErroneousBitsInBorderRate) && 
+    pnh_.getParam("minOtsuStdDev",detector_params_->minOtsuStdDev) && 
+    pnh_.getParam("errorCorrectionRate",detector_params_->errorCorrectionRate);
+    return retval;
+}
+
+bool ArucoRos::readMarkerParams()
+{
+    
+    bool retval = 
+    pnh_.getParam("markersX",markers_X_) && 
+    pnh_.getParam("markersY",markers_Y_) && 
+    pnh_.getParam("markerLength",marker_length_) && 
+    pnh_.getParam("markerSeparation",marker_separation_) && 
+    pnh_.getParam("dictionaryId",dictionary_id_) && 
+    pnh_.getParam("showRejected",show_rejected_) && 
+    pnh_.getParam("refindStrategy",refind_strategy_) && 
+    pnh_.getParam("camId",cam_id_);
+    return retval;
+}
+
+// void ArucoRos::detectMarkers(const cv::Mat &image, const cv::Mat &cam_matrix, const cv::Mat &dist_coeffs)
+// {
+//     // detect markers
+//     aruco::detectMarkers(image, dictionary_, corners, ids, detectorParams, rejected);
+
+//     // refind strategy to detect more markers
+//     if(refindStrategy)
+//         aruco::refineDetectedMarkers(image, board, corners, ids, rejected, camMatrix,
+//                                         distCoeffs);
+// }
+
+// int ArucoRos::estimatePoseBoard(const cv::Mat &cam_matrix, const cv::Mat &dist_coeffs, cv::Vec3d &rvec, cv::Vec3d &tvec)
+// {
+
+// }
+
+// void ArucoRos::drawResults()
+// {
+
+// }
 
 /**
  */

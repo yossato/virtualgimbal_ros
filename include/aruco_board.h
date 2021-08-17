@@ -29,12 +29,45 @@ or tort (including negligence or otherwise) arising in any way out of
 the use of this software, even if advised of the possibility of such damage.
 */
 
+#ifndef __VIRTUALGIMBAL_ROS_ARUCO_BOARD_H__
+#define __VIRTUALGIMBAL_ROS_ARUCO_BOARD_H__
+
 #include <opencv2/highgui.hpp>
 #include <opencv2/aruco.hpp>
 #include <vector>
 #include <iostream>
+#include "ros/ros.h"
 
 bool readCameraParameters(std::string filename, cv::Mat &camMatrix, cv::Mat &distCoeffs);
 bool readDetectorParameters(std::string filename, cv::Ptr<cv::aruco::DetectorParameters> &params);
 
+class ArucoRos{
+public:
+  ArucoRos(ros::NodeHandle &pnh);
+  // void detectMarkers(const cv::Mat &image, const cv::Mat &cam_matrix, const cv::Mat &dist_coeffs);
+  // int estimatePoseBoard(const cv::Mat &cam_matrix, const cv::Mat &dist_coeffs, cv::Vec3d &rvec, cv::Vec3d &tvec);
+  // void drawResults();
+  int markers_X_;
+  int markers_Y_;
+  float marker_length_;
+  float marker_separation_;;
+  int dictionary_id_;
+  bool show_rejected_;;
+  bool refind_strategy_;
+  int cam_id_;
+  cv::Ptr<cv::aruco::DetectorParameters> detector_params_;
+  
+private:
+  bool readDetectorParams();
+  bool readMarkerParams();
 
+
+  ros::NodeHandle &pnh_;
+
+  
+  // cv::Ptr<cv::aruco::Dictionary> dictionary_;
+  // cv::Ptr<aruco::GridBoard> gridboard_;
+  // cv::Ptr<cv::aruco::Board> board_;
+};
+
+#endif // __VIRTUALGIMBAL_ROS_ARUCO_BOARD_H__
