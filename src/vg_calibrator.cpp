@@ -194,29 +194,59 @@ void calibrator::initializeDetection()
 
     // create board object
     gridboard_ =
-        cv::aruco::GridBoard::create(arr_.markers_X_, arr_.markers_Y_,arr_. marker_length_, arr_.marker_separation_, arr_.dictionary_);
+        cv::aruco::GridBoard::create(arr_.markers_X_, arr_.markers_Y_,arr_. marker_length_, arr_.marker_separation_, dictionary_);
     board_ = gridboard_.staticCast<cv::aruco::Board>();
 }
 
 void calibrator::detectMarkers(const cv::Mat &image, const cv::Mat &cam_matrix, const cv::Mat &dist_coeffs)
 {
+    ids_.clear();
+    rejected_.clear();
+    corners_.clear();
+        
+
     // detect markers
-    cv::aruco::detectMarkers(image, dictionary_, corners, ids, detectorParams, rejected);
+    cv::aruco::detectMarkers(image, dictionary_, corners_, ids_, arr_.detector_params_, rejected_);
 
     // refind strategy to detect more markers
     if(arr_.refind_strategy_)
-        cv::aruco::refineDetectedMarkers(image, board, corners, ids, rejected, camMatrix,
-                                        distCoeffs);
+        cv::aruco::refineDetectedMarkers(image, board_, corners_, ids_, rejected_, cam_matrix,
+                                        dist_coeffs);
 }
 
 int calibrator::estimatePoseBoard(const cv::Mat &cam_matrix, const cv::Mat &dist_coeffs, cv::Vec3d &rvec, cv::Vec3d &tvec)
 {
-
+    // estimate board pose
+    int markers_of_board_detected = 0;
+    if(ids_.size() > 0)
+    {
+        markers_of_board_detected = cv::aruco::estimatePoseBoard(corners_, ids_, board_, cam_matrix, dist_coeffs, rvec, tvec);
+    }
+    return markers_of_board_detected;
 }
 
-void calibrator::drawResults()
+void calibrator::drawResults(const cv::Mat &image, const int markers_of_board_detected,const cv::Mat &cam_matrix, const cv::Mat &dist_coeffs, cv::Vec3d &rvec, cv::Vec3d &tvec)
 {
+    cv::Mat imageCopy;
+    // draw results
+    image.copyTo(imageCopy);
+    if(ids_.size() > 0) {
+        cv::aruco::drawDetectedMarkers(imageCopy, corners_, ids_);
+    }
 
+    if(arr_.show_rejected_ && rejected_.size() > 0)
+    {
+        cv::aruco::drawDetectedMarkers(imageCopy, rejected_, cv::noArray(), cv::Scalar(100, 0, 255));
+    }
+        
+    if(markers_of_board_detected > 0)
+    {
+            float axisLength = 0.5f * ((float)std::min(arr_.markers_X_, arr_.markers_Y_) * (arr_.marker_length_ + arr_.marker_separation_) +
+                               arr_.marker_separation_);
+        cv::aruco::drawAxis(imageCopy, cam_matrix, dist_coeffs, rvec, tvec, axisLength);
+    }
+        
+    cv::imshow("out", imageCopy);
 }
 
 void calibrator::callback(const sensor_msgs::ImageConstPtr &image, const sensor_msgs::CameraInfoConstPtr &ros_camera_info)
@@ -224,6 +254,35 @@ void calibrator::callback(const sensor_msgs::ImageConstPtr &image, const sensor_
 
     {
         // Write aruco marker code here.
+        cv::Vec3d rvec, tvec;
+        cv_bridge::CvImageConstPtr cv_ptr;
+        try
+        {
+            cv_ptr = cv_bridge::toCvShare(image, sensor_msgs::image_encodings::BGR8);
+        }
+        catch (cv_bridge::Exception &e)
+        {
+            ROS_ERROR("cv_bridge exception: %s", e.what());
+            return;
+        }
+
+        cv::Mat cam_matrix = (cv::Mat_<double>(3,3) << ros_camera_info->P[0], ros_camera_info->P[1], ros_camera_info->P[2], ros_camera_info->P[4], ros_camera_info->P[5], ros_camera_info->P[6],
+        ros_camera_info->P[8], ros_camera_info->P[9], ros_camera_info->P[10]);
+
+        cv::Mat dist_coeffs;
+        if(ros_camera_info->D.size()){
+            dist_coeffs = cv::Mat(cv::Size(1,ros_camera_info->D.size()),CV_64FC1);
+            memcpy(dist_coeffs.data,ros_camera_info->D.data(),ros_camera_info->D.size()*sizeof(double));
+        }
+
+        detectMarkers(cv_ptr->image,cam_matrix,dist_coeffs);
+
+        int markers_of_board_detected = estimatePoseBoard(cam_matrix,dist_coeffs,rvec,tvec);
+
+        drawResults(cv_ptr->image,markers_of_board_detected,cam_matrix,dist_coeffs,rvec,tvec);
+
+        char key = (char)cv::waitKey(1);
+        if(key == 'q') std::exit(EXIT_SUCCESS);
     }
 
     if (!camera_info_)

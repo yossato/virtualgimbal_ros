@@ -50,9 +50,9 @@ public:
   int markers_X_;
   int markers_Y_;
   float marker_length_;
-  float marker_separation_;;
+  float marker_separation_;
   int dictionary_id_;
-  bool show_rejected_;;
+  bool show_rejected_;
   bool refind_strategy_;
   int cam_id_;
   cv::Ptr<cv::aruco::DetectorParameters> detector_params_;

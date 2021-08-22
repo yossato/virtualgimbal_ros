@@ -68,7 +68,7 @@ private:
     void initializeDetection();
     void detectMarkers(const cv::Mat &image, const cv::Mat &cam_matrix, const cv::Mat &dist_coeffs);
     int  estimatePoseBoard(const cv::Mat &cam_matrix, const cv::Mat &dist_coeffs, cv::Vec3d &rvec, cv::Vec3d &tvec);
-    void drawResults();
+    void drawResults(const cv::Mat &image, const int markers_of_board_detected,const cv::Mat &cam_matrix, const cv::Mat &dist_coeffs, cv::Vec3d &rvec, cv::Vec3d &tvec);
     void callback(const sensor_msgs::ImageConstPtr& image, const sensor_msgs::CameraInfoConstPtr& ros_camera_info);
     void imuCallback(const sensor_msgs::Imu::ConstPtr &msg);
 
@@ -121,6 +121,8 @@ private:
     cv::Ptr<cv::aruco::Dictionary> dictionary_;
     cv::Ptr<cv::aruco::GridBoard> gridboard_;
     cv::Ptr<cv::aruco::Board> board_;
+    std::vector< int > ids_;
+    std::vector< std::vector< cv::Point2f > > corners_, rejected_;
 };
 
 }
