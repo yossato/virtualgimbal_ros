@@ -102,7 +102,7 @@ calibrator::calibrator() : pnh_("~"), image_transport_(nh_), q(1.0, 0, 0, 0), q_
     pnh_.param("lsm_order",lms_order_,lms_order_);
 
     camera_subscriber_ = image_transport_.subscribeCamera(image, 100, &calibrator::callback, this);
-    imu_subscriber_ = pnh_.subscribe(imu_data, 10000, &calibrator::imu_callback, this);
+    imu_subscriber_ = pnh_.subscribe(imu_data, 10000, &calibrator::imuCallback, this);
 
     camera_publisher_ = image_transport_.advertiseCamera("stabilized/image_rect",1);
 
@@ -184,6 +184,41 @@ MatrixPtr calibrator::getR_LMS(ros::Time time, const ros::Time begin, const ros:
     return R;
 }
 
+void calibrator::initializeDetection()
+{
+    arr_.detector_params_->cornerRefinementMethod = cv::aruco::CORNER_REFINE_SUBPIX; // do corner refinement in markers
+    // detectorParams->
+    
+    dictionary_ = cv::aruco::getPredefinedDictionary(cv::aruco::PREDEFINED_DICTIONARY_NAME(arr_.dictionary_id_));
+
+
+    // create board object
+    gridboard_ =
+        cv::aruco::GridBoard::create(arr_.markers_X_, arr_.markers_Y_,arr_. marker_length_, arr_.marker_separation_, arr_.dictionary_);
+    board_ = gridboard_.staticCast<cv::aruco::Board>();
+}
+
+void calibrator::detectMarkers(const cv::Mat &image, const cv::Mat &cam_matrix, const cv::Mat &dist_coeffs)
+{
+    // detect markers
+    cv::aruco::detectMarkers(image, dictionary_, corners, ids, detectorParams, rejected);
+
+    // refind strategy to detect more markers
+    if(arr_.refind_strategy_)
+        cv::aruco::refineDetectedMarkers(image, board, corners, ids, rejected, camMatrix,
+                                        distCoeffs);
+}
+
+int calibrator::estimatePoseBoard(const cv::Mat &cam_matrix, const cv::Mat &dist_coeffs, cv::Vec3d &rvec, cv::Vec3d &tvec)
+{
+
+}
+
+void calibrator::drawResults()
+{
+
+}
+
 void calibrator::callback(const sensor_msgs::ImageConstPtr &image, const sensor_msgs::CameraInfoConstPtr &ros_camera_info)
 {
 
@@ -239,7 +274,7 @@ void calibrator::callback(const sensor_msgs::ImageConstPtr &image, const sensor_
     image_previous = image;
 }
 
-void calibrator::imu_callback(const sensor_msgs::Imu::ConstPtr &msg)
+void calibrator::imuCallback(const sensor_msgs::Imu::ConstPtr &msg)
 {
     if (!std::isfinite(msg->angular_velocity.x + msg->angular_velocity.y + msg->angular_velocity.z + msg->header.stamp.toSec()))
     {

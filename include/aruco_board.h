@@ -65,9 +65,7 @@ private:
   ros::NodeHandle &pnh_;
 
   
-  // cv::Ptr<cv::aruco::Dictionary> dictionary_;
-  // cv::Ptr<aruco::GridBoard> gridboard_;
-  // cv::Ptr<cv::aruco::Board> board_;
+
 };
 
 #endif // __VIRTUALGIMBAL_ROS_ARUCO_BOARD_H__

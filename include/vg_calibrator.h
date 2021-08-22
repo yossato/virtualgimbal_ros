@@ -65,8 +65,12 @@ public:
     ~calibrator();
     void run();
 private:
+    void initializeDetection();
+    void detectMarkers(const cv::Mat &image, const cv::Mat &cam_matrix, const cv::Mat &dist_coeffs);
+    int  estimatePoseBoard(const cv::Mat &cam_matrix, const cv::Mat &dist_coeffs, cv::Vec3d &rvec, cv::Vec3d &tvec);
+    void drawResults();
     void callback(const sensor_msgs::ImageConstPtr& image, const sensor_msgs::CameraInfoConstPtr& ros_camera_info);
-    void imu_callback(const sensor_msgs::Imu::ConstPtr &msg);
+    void imuCallback(const sensor_msgs::Imu::ConstPtr &msg);
 
     ros::NodeHandle nh_;
     ros::NodeHandle pnh_;
@@ -114,6 +118,9 @@ private:
     int lms_order_;
 
     ArucoRos arr_;
+    cv::Ptr<cv::aruco::Dictionary> dictionary_;
+    cv::Ptr<cv::aruco::GridBoard> gridboard_;
+    cv::Ptr<cv::aruco::Board> board_;
 };
 
 }

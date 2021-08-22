@@ -66,13 +66,7 @@ ArucoRos::ArucoRos(ros::NodeHandle &pnh) : pnh_(pnh), detector_params_(aruco::De
     ROS_ERROR("Failed to get params");
     if(!success) std::exit(EXIT_FAILURE);
 
-    // dictionary_ = aruco::getPredefinedDictionary(aruco::PREDEFINED_DICTIONARY_NAME(dictionary_id_));
 
-
-    // // create board object
-    // gridboard_ =
-    //     aruco::GridBoard::create(markers_X_, markers_Y_, marker_length_, marker_separation_, dictionary_);
-    // board_ = gridboard_.staticCast<aruco::Board>();
 }
 
 bool ArucoRos::readDetectorParams()
@@ -116,26 +110,7 @@ bool ArucoRos::readMarkerParams()
     return retval;
 }
 
-// void ArucoRos::detectMarkers(const cv::Mat &image, const cv::Mat &cam_matrix, const cv::Mat &dist_coeffs)
-// {
-//     // detect markers
-//     aruco::detectMarkers(image, dictionary_, corners, ids, detectorParams, rejected);
 
-//     // refind strategy to detect more markers
-//     if(refindStrategy)
-//         aruco::refineDetectedMarkers(image, board, corners, ids, rejected, camMatrix,
-//                                         distCoeffs);
-// }
-
-// int ArucoRos::estimatePoseBoard(const cv::Mat &cam_matrix, const cv::Mat &dist_coeffs, cv::Vec3d &rvec, cv::Vec3d &tvec)
-// {
-
-// }
-
-// void ArucoRos::drawResults()
-// {
-
-// }
 
 /**
  */
