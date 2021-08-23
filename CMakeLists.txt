@@ -16,8 +16,8 @@ endif()
 
 
 configure_file(cl/stabilizer_kernel.cl cl/stabilizer_kernel.cl)
-configure_file(param/detector_params.yaml param/detector_params.yaml)
-
+configure_file(params/detector_params.yaml params/detector_params.yaml)
+configure_file(params/marker_params.yaml params/marker_params.yaml)
 # find_package(OpenCV 4 REQUIRED # Build error
 # NO_MODULE 
 # PATHS /usr/local 

@@ -77,8 +77,7 @@ bool ArucoRos::readDetectorParams()
     pnh_.getParam("adaptiveThreshWinSizeStep",detector_params_->adaptiveThreshWinSizeStep) && 
     pnh_.getParam("adaptiveThreshConstant",detector_params_->adaptiveThreshConstant) && 
     pnh_.getParam("minMarkerPerimeterRate",detector_params_->minMarkerPerimeterRate) && 
-    pnh_.getParam("maxMarkerPerimeterRate",detector_params_->maxMarkerPerimeterRate) && 
-    pnh_.getParam("polygonalApproxAccuracyRate",detector_params_->polygonalApproxAccuracyRate) && 
+    pnh_.getParam("maxMarkerPerimeterRate",detector_params_->maxMarkerPerimeterRate) &&
     pnh_.getParam("minCornerDistanceRate",detector_params_->minCornerDistanceRate) && 
     pnh_.getParam("minDistanceToBorder",detector_params_->minDistanceToBorder) && 
     pnh_.getParam("minMarkerDistanceRate",detector_params_->minMarkerDistanceRate) && 
@@ -105,7 +104,7 @@ bool ArucoRos::readMarkerParams()
     pnh_.getParam("markerSeparation",marker_separation_) && 
     pnh_.getParam("dictionaryId",dictionary_id_) && 
     pnh_.getParam("showRejected",show_rejected_) && 
-    pnh_.getParam("refindStrategy",refind_strategy_) && 
+    pnh_.getParam("refindStrategy",refind_strategy_);
     return retval;
 }
 
