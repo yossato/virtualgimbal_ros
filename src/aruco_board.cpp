@@ -106,7 +106,6 @@ bool ArucoRos::readMarkerParams()
     pnh_.getParam("dictionaryId",dictionary_id_) && 
     pnh_.getParam("showRejected",show_rejected_) && 
     pnh_.getParam("refindStrategy",refind_strategy_) && 
-    pnh_.getParam("camId",cam_id_);
     return retval;
 }
 

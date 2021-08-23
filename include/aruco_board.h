@@ -54,7 +54,6 @@ public:
   int dictionary_id_;
   bool show_rejected_;
   bool refind_strategy_;
-  int cam_id_;
   cv::Ptr<cv::aruco::DetectorParameters> detector_params_;
   
 private:
