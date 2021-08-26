@@ -441,32 +441,32 @@ cv::Mat create_markers_image()
     return boardImage;
 }
 
-cv::Mat create_markers_image2()
+cv::Mat create_markers_image2(const ArucoRos &ar)
 {
     bool showImage = true;
-    int markersX = 6;
-    int markersY = 4;
-    int markerSeparation = 150;
-    int markerLength = 100;
-    int dictionaryId = cv::aruco::DICT_6X6_250;
-    int margins = markerSeparation;
-    int borderBits = 1;
+    // int markersX = 6;
+    // int markersY = 4;
+    // int markerSeparation = 150;
+    // int markerLength = 100;
+    // int dictionaryId = cv::aruco::DICT_6X6_250;
+    // int margins = markerSeparation;
+    // int borderBits = 1;
 
 
     cv::Size imageSize;
-    imageSize.width = markersX * (markerLength + markerSeparation) - markerSeparation + 2 * margins;
+    imageSize.width = ar.markers_X_ * (ar.marker_length_ + ar.marker_separation_) - ar.marker_separation_ + 2 * ar.marker_separation_;
     imageSize.height =
-        markersY * (markerLength + markerSeparation) - markerSeparation + 2 * margins;
+        ar.markers_Y_ * (ar.marker_length_ + ar.marker_separation_) - ar.marker_separation_ + 2 * ar.marker_separation_;
 
     cv::Ptr<cv::aruco::Dictionary> dictionary =
-        cv::aruco::getPredefinedDictionary(cv::aruco::PREDEFINED_DICTIONARY_NAME(dictionaryId));
+        cv::aruco::getPredefinedDictionary(cv::aruco::PREDEFINED_DICTIONARY_NAME(ar.dictionary_id_));
 
-    cv::Ptr<cv::aruco::GridBoard> board = cv::aruco::GridBoard::create(markersX, markersY, float(markerLength),
-                                                      float(markerSeparation), dictionary);
+    cv::Ptr<cv::aruco::GridBoard> board = cv::aruco::GridBoard::create(ar.markers_X_, ar.markers_Y_, float(ar.marker_length_),
+                                                      float(ar.marker_separation_), dictionary);
 
     // show created board
     cv::Mat boardImage;
-    board->draw(imageSize, boardImage, margins, borderBits);
+    board->draw(imageSize, boardImage, ar.marker_separation_, ar.detector_params_->markerBorderBits);
 
     if(showImage) {
         cv::imshow("board", boardImage);
@@ -481,7 +481,7 @@ cv::Mat create_markers_image2()
 void calibrator::run()
 {
     create_markers_image();
-    create_markers_image2();
+    create_markers_image2(arr_);
     return ;
     
     std::string kernel_path = ros::package::getPath("virtualgimbal_ros")+"/cl/stabilizer_kernel.cl";
