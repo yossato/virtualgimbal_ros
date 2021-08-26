@@ -63,10 +63,11 @@ ArucoRos::ArucoRos(ros::NodeHandle &pnh) : pnh_(pnh), detector_params_(aruco::De
     readDetectorParams() && 
     readMarkerParams();
 
-    ROS_ERROR("Failed to get params");
-    if(!success) std::exit(EXIT_FAILURE);
-
-
+    if(!success)
+    {
+        ROS_ERROR("Failed to get params");
+        std::exit(EXIT_FAILURE);
+    }
 }
 
 bool ArucoRos::readDetectorParams()
