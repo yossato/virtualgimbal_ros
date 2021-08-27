@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
-    <arg name="image"           default="/image_rect"/>
-    <arg name="imu_data"        default="/imu_data"/>
+    <arg name="image"           default="/camera/color/image_raw"/>
+    <arg name="imu_data"        default="/camera/imu"/>
     <arg name="zoom_factor"     default="1.3"/>
     <arg name="enable_trimming" default="true"/>
     <arg name="line_delay"      default="0.0"/>
@@ -25,10 +25,4 @@
         <param name="verbose"           value="$(arg verbose)"/>
         <param name="allow_blue_space"  value="$(arg allow_blue_space)"/>
     </node>
-
-    <include file="$(find realsense2_camera)/launch/rs_camera.launch">
-        <arg name="unite_imu_method"    value="linear_interpolation"/>
-        <arg name="enable_gyro"         value="true"/>
-        <arg name="enable_accel"        value="true"/>
-    </include>
 </launch>
