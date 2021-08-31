@@ -227,28 +227,48 @@ int calibrator::estimatePoseBoard(const cv::Mat &cam_matrix, const cv::Mat &dist
     return markers_of_board_detected;
 }
 
-void calibrator::drawResults(const cv::Mat &image, const int markers_of_board_detected,const cv::Mat &cam_matrix, const cv::Mat &dist_coeffs, cv::Vec3d &rvec, cv::Vec3d &tvec)
+void calibrator::estimatePoseSingleMarkers(const cv::Mat &cam_matrix, const cv::Mat &dist_coeffs, std::vector<cv::Vec3d> &rvecs, std::vector<cv::Vec3d> &tvecs)
 {
-    cv::Mat imageCopy;
+    cv::aruco::estimatePoseSingleMarkers(corners_, 0.05, cam_matrix, dist_coeffs, rvecs, tvecs);
+}
+
+cv::Mat calibrator::drawSingleMarkersResults(const cv::Mat &image, const cv::Mat &cam_matrix, const cv::Mat &dist_coeffs, std::vector<cv::Vec3d> &rvecs, std::vector<cv::Vec3d> &tvecs)
+{
+    cv::Mat image_copy;
     // draw results
-    image.copyTo(imageCopy);
+    image.copyTo(image_copy);
+    for (int i = 0; i < rvecs.size(); ++i) {
+        auto rvec = rvecs[i];
+        auto tvec = tvecs[i];
+        cv::aruco::drawAxis(image_copy, cam_matrix, dist_coeffs, rvec, tvec, 0.1);
+    }
+        
+    return image_copy;
+    // cv::imshow("out", imageCopy);
+}
+
+cv::Mat calibrator::drawResults(const cv::Mat &image, const int markers_of_board_detected,const cv::Mat &cam_matrix, const cv::Mat &dist_coeffs, cv::Vec3d &rvec, cv::Vec3d &tvec)
+{
+    cv::Mat image_copy;
+    // draw results
+    image.copyTo(image_copy);
     if(ids_.size() > 0) {
-        cv::aruco::drawDetectedMarkers(imageCopy, corners_, ids_);
+        cv::aruco::drawDetectedMarkers(image_copy, corners_, ids_);
     }
 
     if(arr_.show_rejected_ && rejected_.size() > 0)
     {
-        cv::aruco::drawDetectedMarkers(imageCopy, rejected_, cv::noArray(), cv::Scalar(100, 0, 255));
+        cv::aruco::drawDetectedMarkers(image_copy, rejected_, cv::noArray(), cv::Scalar(100, 0, 255));
     }
         
     if(markers_of_board_detected > 0)
     {
             float axisLength = 0.5f * ((float)std::min(arr_.markers_X_, arr_.markers_Y_) * (arr_.marker_length_ + arr_.marker_separation_) +
                                arr_.marker_separation_);
-        cv::aruco::drawAxis(imageCopy, cam_matrix, dist_coeffs, rvec, tvec, axisLength);
+        cv::aruco::drawAxis(image_copy, cam_matrix, dist_coeffs, rvec, tvec, axisLength);
     }
-        
-    cv::imshow("out", imageCopy);
+    return image_copy;
+    // cv::imshow("out", imageCopy);
 }
 
 void calibrator::callback(const sensor_msgs::ImageConstPtr &image, const sensor_msgs::CameraInfoConstPtr &ros_camera_info)
@@ -283,7 +303,13 @@ void calibrator::callback(const sensor_msgs::ImageConstPtr &image, const sensor_
 
         int markers_of_board_detected = estimatePoseBoard(cam_matrix,dist_coeffs,rvec,tvec);
 
-        drawResults(cv_ptr->image,markers_of_board_detected,cam_matrix,dist_coeffs,rvec,tvec);
+        cv::Mat result_board_image = drawResults(cv_ptr->image,markers_of_board_detected,cam_matrix,dist_coeffs,rvec,tvec);
+        cv::imshow("Board",result_board_image);
+
+        std::vector<cv::Vec3d> rvecs, tvecs;
+        estimatePoseSingleMarkers(cam_matrix,dist_coeffs,rvecs,tvecs);
+        cv::Mat result_single_markers_image = drawSingleMarkersResults(cv_ptr->image,cam_matrix,dist_coeffs,rvecs,tvecs);
+        cv::imshow("Single markers",result_single_markers_image);
 
         // char key = (char)cv::waitKey(1);
         // if(key == 'q') std::exit(EXIT_SUCCESS);

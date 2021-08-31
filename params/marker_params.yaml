@@ -1,7 +1,7 @@
-markersX: 6
-markersY: 4
-markerLength: 150
-markerSeparation: 70
+markersX: 22
+markersY: 11
+markerLength: 50
+markerSeparation: 25
 dictionaryId: 10
 showRejected: false
 refindStrategy: true
