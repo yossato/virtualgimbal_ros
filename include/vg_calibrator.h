@@ -48,7 +48,7 @@
 #include "cl_manager.h"
 #include "SO3Filters.h"
 #include "aruco_board.h"
-
+#include <opencv2/core/eigen.hpp>
 
 namespace virtualgimbal
 {
@@ -73,6 +73,9 @@ private:
     cv::Mat drawSingleMarkersResults(const cv::Mat &image, const cv::Mat &cam_matrix, const cv::Mat &dist_coeffs, std::vector<cv::Vec3d> &rvecs, std::vector<cv::Vec3d> &tvecs);
     void callback(const sensor_msgs::ImageConstPtr& image, const sensor_msgs::CameraInfoConstPtr& ros_camera_info);
     void imuCallback(const sensor_msgs::Imu::ConstPtr &msg);
+    std::vector<double> estimateRelativeZAxisAngles(cv::Vec3d &old_rvec, cv::Vec3d &current_rvec, std::vector<cv::Vec3d> &rvecs);
+    cv::Mat drawPhase(const cv::Mat &image, std::vector<double> relative_z_axis_angles);
+    cv::Mat createMarkersImage2(const ArucoRos &ar);
 
     ros::NodeHandle nh_;
     ros::NodeHandle pnh_;

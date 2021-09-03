@@ -311,6 +311,12 @@ void calibrator::callback(const sensor_msgs::ImageConstPtr &image, const sensor_
         cv::Mat result_single_markers_image = drawSingleMarkersResults(cv_ptr->image,cam_matrix,dist_coeffs,rvecs,tvecs);
         cv::imshow("Single markers",result_single_markers_image);
 
+        static cv::Vec3d old_rvec = rvec;
+        std::vector<double> z_axis_angles = estimateRelativeZAxisAngles(old_rvec,rvec,rvecs);
+        cv::Mat result_phases = drawPhase(result_single_markers_image,z_axis_angles);
+        cv::imshow("phase",result_phases);
+        old_rvec = rvec;
+
         // char key = (char)cv::waitKey(1);
         // if(key == 'q') std::exit(EXIT_SUCCESS);
     }
@@ -410,37 +416,37 @@ void calibrator::imuCallback(const sensor_msgs::Imu::ConstPtr &msg)
     // imu_previous = msg;
 }
 
-cv::Mat create_markers_image()
+cv::Mat createMarkersImage()
 {
-    bool showImage = true;
-    int squaresX = 6;
-    int squaresY = 4;
-    int squareLength = 150;
-    int markerLength = 100;
-    int dictionaryId = cv::aruco::DICT_6X6_250;
-    int margins = squareLength - markerLength;
-    int borderBits = 1;
+    bool show_image = true;
+    int squares_x = 6;
+    int squares_y = 4;
+    int square_length = 150;
+    int marker_length = 100;
+    int dictionary_id = cv::aruco::DICT_6X6_250;
+    int margins = square_length - marker_length;
+    int border_bits = 1;
 
     cv::Ptr<cv::aruco::Dictionary> dictionary =
-    cv::aruco::getPredefinedDictionary(cv::aruco::PREDEFINED_DICTIONARY_NAME(dictionaryId));
+    cv::aruco::getPredefinedDictionary(cv::aruco::PREDEFINED_DICTIONARY_NAME(dictionary_id));
 
     cv::Size imageSize;
-    imageSize.width = squaresX * squareLength + 2 * margins;
-    imageSize.height = squaresY * squareLength + 2 * margins;
+    imageSize.width = squares_x * square_length + 2 * margins;
+    imageSize.height = squares_y * square_length + 2 * margins;
 
-    cv::Ptr<cv::aruco::CharucoBoard> board = cv::aruco::CharucoBoard::create(squaresX, squaresY, (float)squareLength,
-                                                            (float)markerLength, dictionary);
+    cv::Ptr<cv::aruco::CharucoBoard> board = cv::aruco::CharucoBoard::create(squares_x, squares_y, (float)square_length,
+                                                            (float)marker_length, dictionary);
 
     // show created board
     cv::Mat boardImage;
-    board->draw(imageSize, boardImage, margins, borderBits);
+    board->draw(imageSize, boardImage, margins, border_bits);
 
     return boardImage;
 }
 
-cv::Mat create_markers_image2(const ArucoRos &ar)
+cv::Mat calibrator::createMarkersImage2(const ArucoRos &ar)
 {
-    bool showImage = true;
+    bool show_image = true;
     // int markersX = 6;
     // int markersY = 4;
     // int markerSeparation = 150;
@@ -450,9 +456,9 @@ cv::Mat create_markers_image2(const ArucoRos &ar)
     // int borderBits = 1;
 
 
-    cv::Size imageSize;
-    imageSize.width = ar.markers_X_ * (ar.marker_length_ + ar.marker_separation_) - ar.marker_separation_ + 2 * ar.marker_separation_;
-    imageSize.height =
+    cv::Size image_size;
+    image_size.width = ar.markers_X_ * (ar.marker_length_ + ar.marker_separation_) - ar.marker_separation_ + 2 * ar.marker_separation_;
+    image_size.height =
         ar.markers_Y_ * (ar.marker_length_ + ar.marker_separation_) - ar.marker_separation_ + 2 * ar.marker_separation_;
 
     cv::Ptr<cv::aruco::Dictionary> dictionary =
@@ -463,16 +469,60 @@ cv::Mat create_markers_image2(const ArucoRos &ar)
 
     // show created board
     cv::Mat boardImage;
-    board->draw(imageSize, boardImage, ar.marker_separation_, ar.detector_params_->markerBorderBits);
+    board->draw(image_size, boardImage, ar.marker_separation_, ar.detector_params_->markerBorderBits);
 
     return boardImage;
 }
 
+std::vector<double> calibrator::estimateRelativeZAxisAngles(cv::Vec3d &old_rvec, cv::Vec3d &current_rvec, std::vector<cv::Vec3d> &rvecs)
+{
+    Eigen::Vector3d old_eigen_vec,current_eigen_vec;
+
+    cv::cv2eigen(old_rvec,old_eigen_vec);
+    Eigen::Quaterniond old_q = Vector2Quaternion<double>(old_eigen_vec);
+
+    cv::cv2eigen(current_rvec,current_eigen_vec);
+    Eigen::Quaterniond current_q = Vector2Quaternion<double>(current_eigen_vec);
+    
+    Eigen::Quaterniond diff_old_new_q = old_q * current_q.conjugate();
+    Eigen::Vector3d diff_old_new_vec = Quaternion2Vector(diff_old_new_q);
+
+    std::vector<double> relative_z_axis_angles;
+    int i=0;
+    for(auto &r:rvecs)
+    {
+        std::cout << i++ << ":" << r[2] << std::endl;
+        Eigen::Vector3d r_eigen_vec;
+        cv::cv2eigen(r,r_eigen_vec);
+        Eigen::Quaterniond q = Vector2Quaternion<double>(r_eigen_vec);
+
+        Eigen::Quaterniond diff_q = q * current_q.conjugate();
+        Eigen::Vector3d diff_vec = Quaternion2Vector(diff_q);
+        relative_z_axis_angles.push_back(diff_vec.z()/diff_old_new_vec.z());
+    }
+    return relative_z_axis_angles;
+}
+
+cv::Mat calibrator::drawPhase(const cv::Mat &image, std::vector<double> relative_z_axis_angles)
+{
+    cv::Mat image_copy;
+    image.copyTo(image_copy);
+
+    int width = image.cols * 0.1;
+
+    for(int i=0;i<relative_z_axis_angles.size();++i)
+    {
+        cv::Point2f center = (corners_[i][0] + corners_[i][1] + corners_[i][2] + corners_[i][3]) * 0.25;
+        cv::line(image_copy,cv::Point(image.cols/2,center.y),cv::Point(relative_z_axis_angles[i] * width + image.cols/2,center.y),cv::Scalar(0,0,255));
+    }
+    
+    return image_copy;
+}
 
 
 void calibrator::run()
 {
-    cv::Mat aruco_board = create_markers_image2(arr_);
+    cv::Mat aruco_board = createMarkersImage2(arr_);
     
         ros::Rate rate(120);
     while (ros::ok())
