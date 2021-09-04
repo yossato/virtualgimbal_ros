@@ -508,8 +508,8 @@ std::vector<double> calibrator::estimateRelativeZAxisAngles(cv::Vec3d &old_rvec,
 
         Eigen::Quaterniond diff_q = q * current_q.conjugate();
         Eigen::Vector3d diff_vec = Quaternion2Vector(diff_q);
-        // relative_z_axis_angles.push_back(diff_vec.z()/diff_old_new_vec.z());
-        relative_z_axis_angles.push_back(diff_vec.z());
+        relative_z_axis_angles.push_back(diff_vec.z()/diff_old_new_vec.z());
+        // relative_z_axis_angles.push_back(diff_vec.z());
     }
     return relative_z_axis_angles;
 }
