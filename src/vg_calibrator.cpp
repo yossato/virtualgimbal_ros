@@ -501,7 +501,7 @@ std::vector<double> calibrator::estimateRelativeZAxisAngles(cv::Vec3d &old_rvec,
     int i=0;
     for(auto &r:rvecs)
     {
-        std::cout << i++ << ":" << r[2] << std::endl;
+        // std::cout << i++ << ":" << r[2] << std::endl;
         Eigen::Vector3d r_eigen_vec;
         cv::cv2eigen(r,r_eigen_vec);
         Eigen::Quaterniond q = Vector2Quaternion<double>(r_eigen_vec);
@@ -524,8 +524,9 @@ cv::Mat calibrator::drawPhase(const cv::Mat &image, std::vector<double> relative
     for(int i=0;i<relative_z_axis_angles.size();++i)
     {
         cv::Point2f center = (corners_[i][0] + corners_[i][1] + corners_[i][2] + corners_[i][3]) * 0.25;
-        cv::line(image_copy,cv::Point(image.cols/2,center.y),cv::Point(relative_z_axis_angles[i] * width + image.cols/2,center.y),cv::Scalar(0,0,255));
+        cv::line(image_copy,cv::Point(image.cols/2,center.y),cv::Point(relative_z_axis_angles[i] * width + image.cols/2,center.y),cv::Scalar(0,255,255));
     }
+    cv::line(image_copy,cv::Point(image.cols/2,0),cv::Point(image.cols/2,image_copy.rows-1),cv::Scalar(0,255,255));
     
     return image_copy;
 }
