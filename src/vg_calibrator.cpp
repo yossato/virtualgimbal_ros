@@ -227,6 +227,16 @@ int calibrator::estimatePoseBoard(const cv::Mat &cam_matrix, const cv::Mat &dist
     return markers_of_board_detected;
 }
 
+void calibrator::estimatePoseSingleMarkersWithInitPose(const cv::Mat &cam_matrix, const cv::Mat &dist_coeffs, std::vector<cv::Vec3d> &rvecs, std::vector<cv::Vec3d> &tvecs, cv::Vec3d &init_rvec, cv::Vec3d &init_tvec)
+{
+    for(int i=0;i<corners_.size();++i)
+    {
+        rvecs.push_back(init_rvec);
+        tvecs.push_back(init_tvec);
+    }
+    estimatePoseSingleMarkersWithInitialPose(corners_, 0.05, cam_matrix, dist_coeffs, rvecs, tvecs);
+}
+
 void calibrator::estimatePoseSingleMarkers(const cv::Mat &cam_matrix, const cv::Mat &dist_coeffs, std::vector<cv::Vec3d> &rvecs, std::vector<cv::Vec3d> &tvecs)
 {
     cv::aruco::estimatePoseSingleMarkers(corners_, 0.05, cam_matrix, dist_coeffs, rvecs, tvecs);
@@ -240,7 +250,7 @@ cv::Mat calibrator::drawSingleMarkersResults(const cv::Mat &image, const cv::Mat
     for (int i = 0; i < rvecs.size(); ++i) {
         auto rvec = rvecs[i];
         auto tvec = tvecs[i];
-        cv::aruco::drawAxis(image_copy, cam_matrix, dist_coeffs, rvec, tvec, 0.1);
+        cv::aruco::drawAxis(image_copy, cam_matrix, dist_coeffs, rvec, tvec, 0.05);
     }
         
     return image_copy;
@@ -307,7 +317,7 @@ void calibrator::callback(const sensor_msgs::ImageConstPtr &image, const sensor_
         cv::imshow("Board",result_board_image);
 
         std::vector<cv::Vec3d> rvecs, tvecs;
-        estimatePoseSingleMarkers(cam_matrix,dist_coeffs,rvecs,tvecs);
+        estimatePoseSingleMarkersWithInitPose(cam_matrix,dist_coeffs,rvecs,tvecs,rvec,tvec);
         cv::Mat result_single_markers_image = drawSingleMarkersResults(cv_ptr->image,cam_matrix,dist_coeffs,rvecs,tvecs);
         cv::imshow("Single markers",result_single_markers_image);
 
@@ -498,7 +508,8 @@ std::vector<double> calibrator::estimateRelativeZAxisAngles(cv::Vec3d &old_rvec,
 
         Eigen::Quaterniond diff_q = q * current_q.conjugate();
         Eigen::Vector3d diff_vec = Quaternion2Vector(diff_q);
-        relative_z_axis_angles.push_back(diff_vec.z()/diff_old_new_vec.z());
+        // relative_z_axis_angles.push_back(diff_vec.z()/diff_old_new_vec.z());
+        relative_z_axis_angles.push_back(diff_vec.z());
     }
     return relative_z_axis_angles;
 }

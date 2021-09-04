@@ -153,131 +153,88 @@ bool readDetectorParameters(string filename, Ptr<aruco::DetectorParameters> &par
     return true;
 }
 
+/**
+  * @brief Return object points for the system centered in a single marker, given the marker length
+  */
+static void _getSingleMarkerObjectPoints(float markerLength, OutputArray _objPoints) {
+
+    CV_Assert(markerLength > 0);
+
+    _objPoints.create(4, 1, CV_32FC3);
+    Mat objPoints = _objPoints.getMat();
+    // set coordinate system in the middle of the marker, with Z pointing out
+    objPoints.ptr< Vec3f >(0)[0] = Vec3f(-markerLength / 2.f, markerLength / 2.f, 0);
+    objPoints.ptr< Vec3f >(0)[1] = Vec3f(markerLength / 2.f, markerLength / 2.f, 0);
+    objPoints.ptr< Vec3f >(0)[2] = Vec3f(markerLength / 2.f, -markerLength / 2.f, 0);
+    objPoints.ptr< Vec3f >(0)[3] = Vec3f(-markerLength / 2.f, -markerLength / 2.f, 0);
+}
+
 
 /**
- */
-int main_old(int argc, char *argv[]) {
-    CommandLineParser parser(argc, argv, keys);
-    parser.about(about);
+  * ParallelLoopBody class for the parallelization of the single markers pose estimation
+  * Called from function estimatePoseSingleMarkers()
+  */
+class SinglePoseEstimationParallel : public ParallelLoopBody {
+    public:
+    SinglePoseEstimationParallel(cv::Mat& _markerObjPoints, cv::InputArrayOfArrays _corners,
+                                 cv::InputArray _cameraMatrix, cv::InputArray _distCoeffs,
+                                 cv::Mat& _rvecs, cv::Mat& _tvecs)
+        : markerObjPoints(_markerObjPoints), corners(_corners), cameraMatrix(_cameraMatrix),
+          distCoeffs(_distCoeffs), rvecs(_rvecs), tvecs(_tvecs), use_extrinsic_guess(true) {}
 
-    if(argc < 7) {
-        parser.printMessage();
-        return 0;
-    }
-
-    int markersX = parser.get<int>("w");
-    int markersY = parser.get<int>("h");
-    float markerLength = parser.get<float>("l");
-    float markerSeparation = parser.get<float>("s");
-    int dictionaryId = parser.get<int>("d");
-    bool showRejected = parser.has("r");
-    bool refindStrategy = parser.has("rs");
-    int camId = parser.get<int>("ci");
-
-
-    Mat camMatrix, distCoeffs;
-    if(parser.has("c")) {
-        bool readOk = readCameraParameters(parser.get<string>("c"), camMatrix, distCoeffs);
-        if(!readOk) {
-            cerr << "Invalid camera file" << endl;
-            return 0;
+    void operator()(const cv::Range &range) const CV_OVERRIDE {
+        const int begin = range.start;
+        const int end = range.end;
+        cv::Vec3d dummy_rvec;
+        for(int i = begin; i < end; i++) {
+            cv::solvePnP(markerObjPoints, corners.getMat(i), cameraMatrix, distCoeffs,
+                    dummy_rvec, tvecs.at<cv::Vec3d>(i));
+            cv::solvePnP(markerObjPoints, corners.getMat(i), cameraMatrix, distCoeffs,
+                    rvecs.at<cv::Vec3d>(i), tvecs.at<cv::Vec3d>(i), use_extrinsic_guess);
         }
     }
 
-    Ptr<aruco::DetectorParameters> detectorParams = aruco::DetectorParameters::create();
-    if(parser.has("dp")) {
-        bool readOk = readDetectorParameters(parser.get<string>("dp"), detectorParams);
-        if(!readOk) {
-            cerr << "Invalid detector parameters file" << endl;
-            return 0;
-        }
+    private:
+    SinglePoseEstimationParallel &operator=(const SinglePoseEstimationParallel &); // to quiet MSVC
+
+    cv::Mat& markerObjPoints;
+    cv::InputArrayOfArrays corners;
+    cv::InputArray cameraMatrix, distCoeffs;
+    cv::Mat& rvecs, tvecs;
+    bool use_extrinsic_guess;
+};
+
+
+
+
+/**
+  */
+void estimatePoseSingleMarkersWithInitialPose(cv::InputArrayOfArrays _corners, float markerLength,
+                               cv::InputArray _cameraMatrix, cv::InputArray _distCoeffs,
+                               cv::OutputArray _rvecs, cv::OutputArray _tvecs, cv::OutputArray _objPoints) {
+
+    CV_Assert(markerLength > 0);
+
+    cv::Mat markerObjPoints;
+    _getSingleMarkerObjectPoints(markerLength, markerObjPoints);
+    int nMarkers = (int)_corners.total();
+    _rvecs.create(nMarkers, 1, CV_64FC3);
+    _tvecs.create(nMarkers, 1, CV_64FC3);
+
+    cv::Mat rvecs = _rvecs.getMat(), tvecs = _tvecs.getMat();
+
+    //// for each marker, calculate its pose
+    // for (int i = 0; i < nMarkers; i++) {
+    //    solvePnP(markerObjPoints, _corners.getMat(i), _cameraMatrix, _distCoeffs,
+    //             _rvecs.getMat(i), _tvecs.getMat(i));
+    //}
+
+    // this is the parallel call for the previous commented loop (result is equivalent)
+    parallel_for_(cv::Range(0, nMarkers),
+                  SinglePoseEstimationParallel(markerObjPoints, _corners, _cameraMatrix,
+                                               _distCoeffs, rvecs, tvecs));
+    if(_objPoints.needed()){
+        markerObjPoints.convertTo(_objPoints, -1);
     }
-    detectorParams->cornerRefinementMethod = aruco::CORNER_REFINE_SUBPIX; // do corner refinement in markers
-    // detectorParams->doCornerRefinement = true;
-
-    String video;
-    if(parser.has("v")) {
-        video = parser.get<String>("v");
-    }
-
-    if(!parser.check()) {
-        parser.printErrors();
-        return 0;
-    }
-
-    Ptr<aruco::Dictionary> dictionary =
-        aruco::getPredefinedDictionary(aruco::PREDEFINED_DICTIONARY_NAME(dictionaryId));
-
-    VideoCapture inputVideo;
-    int waitTime;
-    if(!video.empty()) {
-        inputVideo.open(video);
-        waitTime = 0;
-    } else {
-        inputVideo.open(camId);
-        waitTime = 10;
-    }
-
-    float axisLength = 0.5f * ((float)min(markersX, markersY) * (markerLength + markerSeparation) +
-                               markerSeparation);
-
-    // create board object
-    Ptr<aruco::GridBoard> gridboard =
-        aruco::GridBoard::create(markersX, markersY, markerLength, markerSeparation, dictionary);
-    Ptr<aruco::Board> board = gridboard.staticCast<aruco::Board>();
-
-    double totalTime = 0;
-    int totalIterations = 0;
-
-    while(inputVideo.grab()) {
-        Mat image, imageCopy;
-        inputVideo.retrieve(image);
-
-        double tick = (double)getTickCount();
-
-        vector< int > ids;
-        vector< vector< Point2f > > corners, rejected;
-        Vec3d rvec, tvec;
-
-        // detect markers
-        aruco::detectMarkers(image, dictionary, corners, ids, detectorParams, rejected);
-
-        // refind strategy to detect more markers
-        if(refindStrategy)
-            aruco::refineDetectedMarkers(image, board, corners, ids, rejected, camMatrix,
-                                         distCoeffs);
-
-        // estimate board pose
-        int markersOfBoardDetected = 0;
-        if(ids.size() > 0)
-            markersOfBoardDetected =
-                aruco::estimatePoseBoard(corners, ids, board, camMatrix, distCoeffs, rvec, tvec);
-
-        double currentTime = ((double)getTickCount() - tick) / getTickFrequency();
-        totalTime += currentTime;
-        totalIterations++;
-        if(totalIterations % 30 == 0) {
-            cout << "Detection Time = " << currentTime * 1000 << " ms "
-                 << "(Mean = " << 1000 * totalTime / double(totalIterations) << " ms)" << endl;
-        }
-
-        // draw results
-        image.copyTo(imageCopy);
-        if(ids.size() > 0) {
-            aruco::drawDetectedMarkers(imageCopy, corners, ids);
-        }
-
-        if(showRejected && rejected.size() > 0)
-            aruco::drawDetectedMarkers(imageCopy, rejected, noArray(), Scalar(100, 0, 255));
-
-        if(markersOfBoardDetected > 0)
-            aruco::drawAxis(imageCopy, camMatrix, distCoeffs, rvec, tvec, axisLength);
-
-        imshow("out", imageCopy);
-        char key = (char)waitKey(waitTime);
-        if(key == 27) break;
-    }
-
-    return 0;
 }
 

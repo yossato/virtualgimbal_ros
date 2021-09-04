@@ -37,10 +37,12 @@ the use of this software, even if advised of the possibility of such damage.
 #include <vector>
 #include <iostream>
 #include "ros/ros.h"
-
+#include <opencv2/calib3d.hpp>
 bool readCameraParameters(std::string filename, cv::Mat &camMatrix, cv::Mat &distCoeffs);
 bool readDetectorParameters(std::string filename, cv::Ptr<cv::aruco::DetectorParameters> &params);
-
+void estimatePoseSingleMarkersWithInitialPose(cv::InputArrayOfArrays _corners, float markerLength,
+                               cv::InputArray _cameraMatrix, cv::InputArray _distCoeffs,
+                               cv::OutputArray _rvecs, cv::OutputArray _tvecs, cv::OutputArray _objPoints = cv::noArray());
 class ArucoRos{
 public:
   ArucoRos(ros::NodeHandle &pnh);
