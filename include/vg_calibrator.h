@@ -78,7 +78,8 @@ private:
     std::vector<double> estimateRelativeZAxisAngles(cv::Vec3d &old_rvec, cv::Vec3d &current_rvec, std::vector<cv::Vec3d> &rvecs);
     cv::Mat drawPhase(const cv::Mat &image, std::vector<double> relative_z_axis_angles);
     cv::Mat createMarkersImage2(const ArucoRos &ar);
-
+    Eigen::Vector3d getDiffAngleVector(cv::Vec3d &old_rvec, cv::Vec3d &current_rvec);
+    
     ros::NodeHandle nh_;
     ros::NodeHandle pnh_;
     image_transport::ImageTransport image_transport_;
@@ -130,6 +131,8 @@ private:
     cv::Ptr<cv::aruco::Board> board_;
     std::vector< int > ids_;
     std::vector< std::vector< cv::Point2f > > corners_, rejected_;
+
+    double min_thres_angle_;
 };
 
 }

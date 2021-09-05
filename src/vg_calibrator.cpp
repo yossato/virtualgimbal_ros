@@ -73,7 +73,7 @@ calibrator::calibrator() : pnh_("~"), image_transport_(nh_), q(1.0, 0, 0, 0), q_
  last_vector(0, 0, 0), param(pnh_),
  zoom_(1.3f),cutoff_frequency_(0.5),enable_trimming_(true),
  offset_time_(ros::Duration(0.0)), verbose(false), allow_blue_space(false), lms_period_(1.5), lms_order_(1),
- arr_(pnh_)
+ arr_(pnh_),min_thres_angle_(0.0)
 {
     std::string image = "/image_rect";
     std::string imu_data = "/imu_data";
@@ -100,6 +100,8 @@ calibrator::calibrator() : pnh_("~"), image_transport_(nh_), q(1.0, 0, 0, 0), q_
 
     pnh_.param("lsm_period",lms_period_,lms_period_);
     pnh_.param("lsm_order",lms_order_,lms_order_);
+
+    pnh_.param("minimumThresAngle",min_thres_angle_,min_thres_angle_);
 
     initializeDetection();
 
@@ -323,7 +325,16 @@ void calibrator::callback(const sensor_msgs::ImageConstPtr &image, const sensor_
 
         static cv::Vec3d old_rvec = rvec;
         std::vector<double> z_axis_angles = estimateRelativeZAxisAngles(old_rvec,rvec,rvecs);
-        cv::Mat result_phases = drawPhase(result_single_markers_image,z_axis_angles);
+        cv::Mat result_phases;
+
+        if(std::fabs(getDiffAngleVector(old_rvec, rvec).z()) > min_thres_angle_)
+        {
+            result_phases = drawPhase(result_single_markers_image,z_axis_angles);
+        }
+        else
+        {
+            result_phases = result_single_markers_image.clone();
+        }
         cv::imshow("phase",result_phases);
         old_rvec = rvec;
 
@@ -484,7 +495,7 @@ cv::Mat calibrator::createMarkersImage2(const ArucoRos &ar)
     return boardImage;
 }
 
-std::vector<double> calibrator::estimateRelativeZAxisAngles(cv::Vec3d &old_rvec, cv::Vec3d &current_rvec, std::vector<cv::Vec3d> &rvecs)
+Eigen::Vector3d calibrator::getDiffAngleVector(cv::Vec3d &old_rvec, cv::Vec3d &current_rvec)
 {
     Eigen::Vector3d old_eigen_vec,current_eigen_vec;
 
@@ -496,6 +507,28 @@ std::vector<double> calibrator::estimateRelativeZAxisAngles(cv::Vec3d &old_rvec,
     
     Eigen::Quaterniond diff_old_new_q = old_q * current_q.conjugate();
     Eigen::Vector3d diff_old_new_vec = Quaternion2Vector(diff_old_new_q);
+
+
+    return diff_old_new_vec;
+}
+
+std::vector<double> calibrator::estimateRelativeZAxisAngles(cv::Vec3d &old_rvec, cv::Vec3d &current_rvec, std::vector<cv::Vec3d> &rvecs)
+{
+    // Eigen::Vector3d old_eigen_vec,current_eigen_vec;
+
+    // cv::cv2eigen(old_rvec,old_eigen_vec);
+    // Eigen::Quaterniond old_q = Vector2Quaternion<double>(old_eigen_vec);
+
+    // cv::cv2eigen(current_rvec,current_eigen_vec);
+    // Eigen::Quaterniond current_q = Vector2Quaternion<double>(current_eigen_vec);
+    
+    // Eigen::Quaterniond diff_old_new_q = old_q * current_q.conjugate();
+    // Eigen::Vector3d diff_old_new_vec = Quaternion2Vector(diff_old_new_q);
+    Eigen::Vector3d diff_old_new_vec = getDiffAngleVector(old_rvec, current_rvec);
+
+    Eigen::Vector3d current_eigen_vec;
+    cv::cv2eigen(current_rvec,current_eigen_vec);
+    Eigen::Quaterniond current_q = Vector2Quaternion<double>(current_eigen_vec);
 
     std::vector<double> relative_z_axis_angles;
     int i=0;
