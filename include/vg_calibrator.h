@@ -79,7 +79,9 @@ private:
     cv::Mat drawPhase(const cv::Mat &image, std::vector<double> relative_z_axis_angles);
     cv::Mat createMarkersImage2(const ArucoRos &ar);
     Eigen::Vector3d getDiffAngleVector(cv::Vec3d &old_rvec, cv::Vec3d &current_rvec);
-    
+    double calculateLineDelay(double fps, std::vector<double> relative_z_axis_angles);
+
+
     ros::NodeHandle nh_;
     ros::NodeHandle pnh_;
     image_transport::ImageTransport image_transport_;
