@@ -79,8 +79,8 @@ private:
     cv::Mat drawPhase(const cv::Mat &image, std::vector<double> relative_z_axis_angles);
     cv::Mat createMarkersImage2(const ArucoRos &ar);
     Eigen::Vector3d getDiffAngleVector(cv::Vec3d &old_rvec, cv::Vec3d &current_rvec);
-    double calculateLineDelay(double fps, std::vector<double> relative_z_axis_angles);
-
+    double calculateLineDelay(double dt, std::vector<double> relative_z_axis_angles);
+    Eigen::VectorXd drawPhaseLSM(double dt, std::vector<double> relative_z_axis_angles, cv::Mat &image);
 
     ros::NodeHandle nh_;
     ros::NodeHandle pnh_;
@@ -98,6 +98,8 @@ private:
     ros::Time get_begin_time(ros::Time time);
     ros::Time get_end_time(ros::Time time);
 
+
+
     Rotation raw_angle_quaternion;
     Rotation filtered_angle_quaternion;
 
@@ -106,7 +108,7 @@ private:
     Parameters param; 
     CameraInformationPtr camera_info_;
     CameraInformationPtr dst_camera_info_;
-    sensor_msgs::CameraInfoConstPtr ros_camera_info_;
+    // sensor_msgs::CameraInfoConstPtr ros_camera_info_;
 
     // Image processing parameters
     float zoom_;

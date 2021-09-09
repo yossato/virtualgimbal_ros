@@ -327,12 +327,26 @@ void calibrator::callback(const sensor_msgs::ImageConstPtr &image, const sensor_
         std::vector<double> z_axis_angles = estimateRelativeZAxisAngles(old_rvec,rvec,rvecs);
 
         // Get frame rate
-        static double fps = 0;
+        // static double fps = 0;
         static ros::Time old_time = ros_camera_info->header.stamp;
         ros::Duration dt = ros_camera_info->header.stamp - old_time;
-        if(!dt.isZero())
+
+        // if(!dt.isZero())
+        // {
+        //     if(fps <= std::numeric_limits<double>::epsilon())
+        //     {
+        //         fps = 1.0 / dt.toSec();
+        //     }
+        //     else
+        //     {
+        //         fps = fps * 0.99 + 1.0 / dt.toSec() * 0.01;
+        //     }
+        // }
+        old_time = ros_camera_info->header.stamp;
+
+        if (dt.isZero())
         {
-            fps = fps * 0.99 + dt.toSec() * 0.01;
+            return;
         }
 
         double line_delay = std::numeric_limits<double>::quiet_NaN();
@@ -342,8 +356,8 @@ void calibrator::callback(const sensor_msgs::ImageConstPtr &image, const sensor_
         if(std::fabs(getDiffAngleVector(old_rvec, rvec).z()) > min_thres_angle_)
         {
             result_phases = drawPhase(result_single_markers_image,z_axis_angles);
-            line_delay = calculateLineDelay(fps,z_axis_angles);
-
+            line_delay = calculateLineDelay(dt.toSec(),z_axis_angles);
+            drawPhaseLSM(dt.toSec(),z_axis_angles,result_phases);
         }
         else
         {
@@ -578,7 +592,7 @@ cv::Mat calibrator::drawPhase(const cv::Mat &image, std::vector<double> relative
     return image_copy;
 }
 
-double calibrator::calculateLineDelay(double fps, std::vector<double> relative_z_axis_angles)
+double calibrator::calculateLineDelay(double dt, std::vector<double> relative_z_axis_angles)
 {
     Eigen::VectorXd x(relative_z_axis_angles.size()),y(relative_z_axis_angles.size());
     for(int i=0;i<relative_z_axis_angles.size();++i)
@@ -588,8 +602,30 @@ double calibrator::calculateLineDelay(double fps, std::vector<double> relative_z
         y[i] = relative_z_axis_angles[i];
     }
     Eigen::VectorXd coeffs = least_squares_method(x,y,1);
-    ROS_INFO("FPS: %f LSM: %f %f",fps, coeffs[0],coeffs[1]);
+    ROS_INFO("dt: %f LSM: %f %f",dt, coeffs[0],coeffs[1]);
     return coeffs[0];
+}
+
+Eigen::VectorXd calibrator::drawPhaseLSM(double dt, std::vector<double> relative_z_axis_angles, cv::Mat &image)
+{
+    int width = image.cols * 0.1;
+    Eigen::VectorXd x(relative_z_axis_angles.size()),y(relative_z_axis_angles.size());
+    for(int i=0;i<relative_z_axis_angles.size();++i)
+    {
+        cv::Point2f center = (corners_[i][0] + corners_[i][1] + corners_[i][2] + corners_[i][3]) * 0.25;
+        x[i] = center.y;
+        y[i] = relative_z_axis_angles[i] * width;
+    }
+    // std::cout << "x:\r\n" << x << std::endl;
+    // std::cout << "y:\r\n" << y << std::endl;
+    Eigen::VectorXd coeffs = least_squares_method(x,y,1);
+    ROS_INFO("dt: %f LSM: %f %f",dt, coeffs[0],coeffs[1]);
+
+    cv::line(image, cv::Point(image.cols/2 + coeffs[1]*0                + coeffs[0],     0), 
+                    cv::Point(image.cols/2 + coeffs[1]*(image.rows-1)   + coeffs[0],  (image.rows-1)),
+                    cv::Scalar(0,255,0),3);
+
+    return coeffs;
 }
 
 void calibrator::run()
