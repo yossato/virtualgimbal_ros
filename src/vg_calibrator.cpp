@@ -349,14 +349,15 @@ void calibrator::callback(const sensor_msgs::ImageConstPtr &image, const sensor_
             return;
         }
 
-        double line_delay = std::numeric_limits<double>::quiet_NaN();
+        Eigen::VectorXd linear_equation_coeffs(2);
+        linear_equation_coeffs << std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN();
 
         cv::Mat result_phases;
 
         if(std::fabs(getDiffAngleVector(old_rvec, rvec).z()) > min_thres_angle_)
         {
             result_phases = drawPhase(result_single_markers_image,z_axis_angles);
-            line_delay = calculateLineDelay(dt.toSec(),z_axis_angles);
+            linear_equation_coeffs = calculateLinearEquationCoefficients(dt.toSec(),z_axis_angles);
             drawPhaseLSM(dt.toSec(),z_axis_angles,result_phases);
         }
         else
@@ -365,6 +366,8 @@ void calibrator::callback(const sensor_msgs::ImageConstPtr &image, const sensor_
         }
         cv::imshow("phase",result_phases);
         old_rvec = rvec;
+
+        
 
         // char key = (char)cv::waitKey(1);
         // if(key == 'q') std::exit(EXIT_SUCCESS);
@@ -592,34 +595,85 @@ cv::Mat calibrator::drawPhase(const cv::Mat &image, std::vector<double> relative
     return image_copy;
 }
 
-double calibrator::calculateLineDelay(double dt, std::vector<double> relative_z_axis_angles)
+cv::Point2f calibrator::getCenter(int i)
+{
+    cv::Point2f center = (corners_[i][0] + corners_[i][1] + corners_[i][2] + corners_[i][3]) * 0.25;
+    return center;
+}
+
+Eigen::VectorXd calibrator::calculateLinearEquationCoefficients(double dt, std::vector<double> relative_z_axis_angles)
 {
     Eigen::VectorXd x(relative_z_axis_angles.size()),y(relative_z_axis_angles.size());
     for(int i=0;i<relative_z_axis_angles.size();++i)
     {
-        cv::Point2f center = (corners_[i][0] + corners_[i][1] + corners_[i][2] + corners_[i][3]) * 0.25;
+        cv::Point2f center = getCenter(i);
         x[i] = center.y;
         y[i] = relative_z_axis_angles[i];
     }
     Eigen::VectorXd coeffs = least_squares_method(x,y,1);
     ROS_INFO("dt: %f LSM: %f %f",dt, coeffs[0],coeffs[1]);
-    return coeffs[0];
+    return coeffs;
+}
+
+Eigen::VectorXd calibrator::calculateLinearEquationCoefficientsRansac(double dt, std::vector<double> relative_z_axis_angles)
+{
+    double maximum_angle_distance_ransac_ = 0.2;
+    int maximum_iteration_ransac_ = 100000;
+    int maximum_inlier = 0;
+    Eigen::VectorXd best_index(2);
+
+    std::random_device seed_gen;
+    std::mt19937 engine(seed_gen());
+    std::uniform_int_distribution<uint64_t> get_rand_uni_int( 0, relative_z_axis_angles.size()-1 );
+    for(int n=0; n<maximum_iteration_ransac_; ++n)
+    {
+        int i0 = get_rand_uni_int(engine);
+        int i1 = get_rand_uni_int(engine);
+        // u = a*v + b
+        // a = (u(i1) - u(i0)) / (v(i1) - v(i0))
+        double a = (relative_z_axis_angles[i1] - relative_z_axis_angles[i0]) / (getCenter(i1) - getCenter(i0)).y;
+        double b = getCenter(i1).y - a * relative_z_axis_angles[i1];
+        
+        // Count a number of inlier
+        int inlier = 0;
+        for(int i = 0;i<relative_z_axis_angles.size();++i)
+        {
+            double diff = std::fabs( a * getCenter(i).y + b - relative_z_axis_angles[i]);
+            if(diff <= maximum_angle_distance_ransac_)
+            {
+                ++inlier;
+            } 
+        }
+        if(inlier > maximum_inlier)
+        {
+            maximum_inlier = inlier;
+            best_index[0] = i0;
+            best_index[1] = i1; 
+        }
+    }
+
+    // Extract inlers
+    double a = (relative_z_axis_angles[best_index[1]] - relative_z_axis_angles[best_index[0]]) / (getCenter(best_index[1]) - getCenter(best_index[0])).y;
+    double b = getCenter(best_index[1]).y - a * relative_z_axis_angles[best_index[1]];
+    Eigen::VectorXd x,y;
+    for(int i=0;i<relative_z_axis_angles.size();++i)
+    {
+        double diff = std::fabs( a * getCenter(i).y + b - relative_z_axis_angles[i]);
+        if(diff <= maximum_angle_distance_ransac_)
+        {
+            x[i] = (getCenter(i).y);
+            y[i] = (relative_z_axis_angles[i]);
+        } 
+    }
+
+    return least_squares_method(x,y,1);
+
 }
 
 Eigen::VectorXd calibrator::drawPhaseLSM(double dt, std::vector<double> relative_z_axis_angles, cv::Mat &image)
 {
     int width = image.cols * 0.1;
-    Eigen::VectorXd x(relative_z_axis_angles.size()),y(relative_z_axis_angles.size());
-    for(int i=0;i<relative_z_axis_angles.size();++i)
-    {
-        cv::Point2f center = (corners_[i][0] + corners_[i][1] + corners_[i][2] + corners_[i][3]) * 0.25;
-        x[i] = center.y;
-        y[i] = relative_z_axis_angles[i] * width;
-    }
-    // std::cout << "x:\r\n" << x << std::endl;
-    // std::cout << "y:\r\n" << y << std::endl;
-    Eigen::VectorXd coeffs = least_squares_method(x,y,1);
-    ROS_INFO("dt: %f LSM: %f %f",dt, coeffs[0],coeffs[1]);
+    Eigen::VectorXd coeffs = calculateLinearEquationCoefficients(dt, relative_z_axis_angles);
 
     cv::line(image, cv::Point(image.cols/2 + coeffs[1]*0                + coeffs[0],     0), 
                     cv::Point(image.cols/2 + coeffs[1]*(image.rows-1)   + coeffs[0],  (image.rows-1)),

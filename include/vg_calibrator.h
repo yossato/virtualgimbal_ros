@@ -50,7 +50,7 @@
 #include "aruco_board.h"
 #include <opencv2/core/eigen.hpp>
 #include "aruco_board.h"
-
+#include <random>
 namespace virtualgimbal
 {
 using MatrixPtr = std::shared_ptr<std::vector<float>>;
@@ -79,7 +79,9 @@ private:
     cv::Mat drawPhase(const cv::Mat &image, std::vector<double> relative_z_axis_angles);
     cv::Mat createMarkersImage2(const ArucoRos &ar);
     Eigen::Vector3d getDiffAngleVector(cv::Vec3d &old_rvec, cv::Vec3d &current_rvec);
-    double calculateLineDelay(double dt, std::vector<double> relative_z_axis_angles);
+    cv::Point2f getCenter(int i);
+    Eigen::VectorXd calculateLinearEquationCoefficients(double dt, std::vector<double> relative_z_axis_angles);
+    Eigen::VectorXd calculateLinearEquationCoefficientsRansac(double dt, std::vector<double> relative_z_axis_angles);
     Eigen::VectorXd drawPhaseLSM(double dt, std::vector<double> relative_z_axis_angles, cv::Mat &image);
 
     ros::NodeHandle nh_;
