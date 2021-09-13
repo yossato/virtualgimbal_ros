@@ -81,8 +81,8 @@ private:
     Eigen::Vector3d getDiffAngleVector(cv::Vec3d &old_rvec, cv::Vec3d &current_rvec);
     cv::Point2f getCenter(int i);
     Eigen::VectorXd calculateLinearEquationCoefficients(double dt, std::vector<double> relative_z_axis_angles);
-    Eigen::VectorXd calculateLinearEquationCoefficientsRansac(double dt, std::vector<double> relative_z_axis_angles);
-    Eigen::VectorXd drawPhaseLSM(double dt, std::vector<double> relative_z_axis_angles, cv::Mat &image);
+    Eigen::VectorXd calculateLinearEquationCoefficientsRansac(std::vector<double> vec_v, std::vector<double> relative_z_axis_angles);
+    Eigen::VectorXd drawPhaseLSM(double dt, Eigen::VectorXd coeffs, cv::Mat &image, cv::Scalar color=cv::Scalar(0,255,0));
 
     ros::NodeHandle nh_;
     ros::NodeHandle pnh_;

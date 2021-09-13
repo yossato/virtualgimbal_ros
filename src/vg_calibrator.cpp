@@ -354,20 +354,38 @@ void calibrator::callback(const sensor_msgs::ImageConstPtr &image, const sensor_
 
         cv::Mat result_phases;
 
-        if(std::fabs(getDiffAngleVector(old_rvec, rvec).z()) > min_thres_angle_)
+        bool angle_diff_is_large = std::fabs(getDiffAngleVector(old_rvec, rvec).z()) > min_thres_angle_;
+        if(angle_diff_is_large)
         {
             result_phases = drawPhase(result_single_markers_image,z_axis_angles);
             linear_equation_coeffs = calculateLinearEquationCoefficients(dt.toSec(),z_axis_angles);
-            drawPhaseLSM(dt.toSec(),z_axis_angles,result_phases);
+            drawPhaseLSM(dt.toSec(),linear_equation_coeffs,result_phases);
         }
         else
         {
             result_phases = result_single_markers_image.clone();
         }
-        cv::imshow("phase",result_phases);
         old_rvec = rvec;
 
-        
+        size_t buff_len = 5000;
+        static std::vector<double> z_axis_buff,vec_v;
+        std::copy(z_axis_angles.begin(),z_axis_angles.end(),std::back_inserter(z_axis_buff));
+        for(int i =0;i<z_axis_angles.size();++i)
+        {
+            vec_v.push_back(getCenter(i).y);
+        }
+        ROS_INFO("size:%lu",z_axis_buff.size());
+        if((z_axis_buff.size() >= buff_len) && angle_diff_is_large)
+        {
+            // z_axis_buff.erase(z_axis_buff.begin(),z_axis_buff.begin()+(z_axis_buff.size()-buff_len));
+            linear_equation_coeffs = calculateLinearEquationCoefficientsRansac(vec_v,z_axis_buff);
+            drawPhaseLSM(dt.toSec(),linear_equation_coeffs,result_phases,cv::Scalar(255,255,0));
+        }
+
+        if(!result_phases.empty())
+        {
+            cv::imshow("phase",result_phases);
+        }     
 
         // char key = (char)cv::waitKey(1);
         // if(key == 'q') std::exit(EXIT_SUCCESS);
@@ -536,7 +554,7 @@ Eigen::Vector3d calibrator::getDiffAngleVector(cv::Vec3d &old_rvec, cv::Vec3d &c
     cv::cv2eigen(current_rvec,current_eigen_vec);
     Eigen::Quaterniond current_q = Vector2Quaternion<double>(current_eigen_vec);
     
-    Eigen::Quaterniond diff_old_new_q = old_q * current_q.conjugate();
+    Eigen::Quaterniond diff_old_new_q = (old_q * current_q.conjugate()).normalized();
     Eigen::Vector3d diff_old_new_vec = Quaternion2Vector(diff_old_new_q);
 
 
@@ -615,10 +633,10 @@ Eigen::VectorXd calibrator::calculateLinearEquationCoefficients(double dt, std::
     return coeffs;
 }
 
-Eigen::VectorXd calibrator::calculateLinearEquationCoefficientsRansac(double dt, std::vector<double> relative_z_axis_angles)
+Eigen::VectorXd calibrator::calculateLinearEquationCoefficientsRansac(std::vector<double> vec_v, std::vector<double> relative_z_axis_angles)
 {
-    double maximum_angle_distance_ransac_ = 0.2;
-    int maximum_iteration_ransac_ = 100000;
+    double maximum_angle_distance_ransac_ = 0.5;
+    int maximum_iteration_ransac_ = 1000;
     int maximum_inlier = 0;
     Eigen::VectorXd best_index(2);
 
@@ -631,14 +649,14 @@ Eigen::VectorXd calibrator::calculateLinearEquationCoefficientsRansac(double dt,
         int i1 = get_rand_uni_int(engine);
         // u = a*v + b
         // a = (u(i1) - u(i0)) / (v(i1) - v(i0))
-        double a = (relative_z_axis_angles[i1] - relative_z_axis_angles[i0]) / (getCenter(i1) - getCenter(i0)).y;
-        double b = getCenter(i1).y - a * relative_z_axis_angles[i1];
+        double a = (relative_z_axis_angles[i1] - relative_z_axis_angles[i0]) / (vec_v[i1] - vec_v[i0]);
+        double b = vec_v[i1] - a * relative_z_axis_angles[i1];
         
         // Count a number of inlier
         int inlier = 0;
         for(int i = 0;i<relative_z_axis_angles.size();++i)
         {
-            double diff = std::fabs( a * getCenter(i).y + b - relative_z_axis_angles[i]);
+            double diff = std::fabs( a * vec_v[i] + b - relative_z_axis_angles[i]);
             if(diff <= maximum_angle_distance_ransac_)
             {
                 ++inlier;
@@ -652,32 +670,42 @@ Eigen::VectorXd calibrator::calculateLinearEquationCoefficientsRansac(double dt,
         }
     }
 
-    // Extract inlers
-    double a = (relative_z_axis_angles[best_index[1]] - relative_z_axis_angles[best_index[0]]) / (getCenter(best_index[1]) - getCenter(best_index[0])).y;
-    double b = getCenter(best_index[1]).y - a * relative_z_axis_angles[best_index[1]];
-    Eigen::VectorXd x,y;
-    for(int i=0;i<relative_z_axis_angles.size();++i)
+    if(maximum_inlier == 0)
     {
-        double diff = std::fabs( a * getCenter(i).y + b - relative_z_axis_angles[i]);
-        if(diff <= maximum_angle_distance_ransac_)
-        {
-            x[i] = (getCenter(i).y);
-            y[i] = (relative_z_axis_angles[i]);
-        } 
+        ROS_ERROR("Maximum inlier is zero. @ %s %d",__FILE__,__LINE__);    
     }
 
-    return least_squares_method(x,y,1);
+    // Extract inlers
+    double a = (relative_z_axis_angles[best_index[1]] - relative_z_axis_angles[best_index[0]]) / (vec_v[best_index[1]] - vec_v[best_index[0]]);
+    double b = vec_v[best_index[1]] - a * relative_z_axis_angles[best_index[1]];
+    Eigen::VectorXd x(maximum_inlier),y(maximum_inlier);
+    size_t inlier_index = 0;
+    for(int i=0;i<relative_z_axis_angles.size();++i)
+    {
+        double diff = std::fabs( a * vec_v[i] + b - relative_z_axis_angles[i]);
+        if(diff <= maximum_angle_distance_ransac_)
+        {
+            x[inlier_index] = (vec_v[i]);
+            y[inlier_index] = (relative_z_axis_angles[i]);
+            ++inlier_index;
+        } 
+    }
+    std::cout << "x:\r\n" << x.transpose() << std::endl; 
+    std::cout << "y:\r\n" << y.transpose() << std::endl; 
 
+
+    Eigen::VectorXd coeffs =  least_squares_method(x,y,1);
+    return coeffs;
 }
 
-Eigen::VectorXd calibrator::drawPhaseLSM(double dt, std::vector<double> relative_z_axis_angles, cv::Mat &image)
+Eigen::VectorXd calibrator::drawPhaseLSM(double dt, Eigen::VectorXd coeffs, cv::Mat &image, cv::Scalar color)
 {
     int width = image.cols * 0.1;
-    Eigen::VectorXd coeffs = calculateLinearEquationCoefficients(dt, relative_z_axis_angles);
+    //  = calculateLinearEquationCoefficients(dt, relative_z_axis_angles);
 
-    cv::line(image, cv::Point(image.cols/2 + coeffs[1]*0                + coeffs[0],     0), 
-                    cv::Point(image.cols/2 + coeffs[1]*(image.rows-1)   + coeffs[0],  (image.rows-1)),
-                    cv::Scalar(0,255,0),3);
+    cv::line(image, cv::Point(image.cols/2 + width * (coeffs[1]*0                + coeffs[0]),     0), 
+                    cv::Point(image.cols/2 + width * (coeffs[1]*(image.rows-1)   + coeffs[0]),  (image.rows-1)),
+                    color,3);
 
     return coeffs;
 }
