@@ -76,7 +76,7 @@ private:
     void callback(const sensor_msgs::ImageConstPtr& image, const sensor_msgs::CameraInfoConstPtr& ros_camera_info);
     void imuCallback(const sensor_msgs::Imu::ConstPtr &msg);
     std::vector<double> estimateRelativeZAxisAngles(cv::Vec3d &old_rvec, cv::Vec3d &current_rvec, std::vector<cv::Vec3d> &rvecs);
-    cv::Mat drawPhase(const cv::Mat &image, std::vector<double> relative_z_axis_angles);
+    cv::Mat drawPhase(const cv::Mat &image, std::vector<double> relative_z_axis_angles, cv::Scalar color=cv::Scalar(0,255,255));
     cv::Mat createMarkersImage2(const ArucoRos &ar);
     Eigen::Vector3d getDiffAngleVector(cv::Vec3d &old_rvec, cv::Vec3d &current_rvec);
     cv::Point2f getCenter(int i);
