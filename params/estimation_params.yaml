@@ -1,1 +1,3 @@
 minimumThresAngle: 0.05
+maximum_angle_distance_ransac: 0.3
+maximum_iteration_ransac: 10000

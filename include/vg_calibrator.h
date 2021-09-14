@@ -139,6 +139,9 @@ private:
     std::vector< std::vector< cv::Point2f > > corners_, rejected_;
 
     double min_thres_angle_;
+
+    double maximum_angle_distance_ransac_ = 0.5;
+    int maximum_iteration_ransac_ = 1000;
 };
 
 }

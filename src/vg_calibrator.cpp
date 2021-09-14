@@ -73,7 +73,7 @@ calibrator::calibrator() : pnh_("~"), image_transport_(nh_), q(1.0, 0, 0, 0), q_
  last_vector(0, 0, 0), param(pnh_),
  zoom_(1.3f),cutoff_frequency_(0.5),enable_trimming_(true),
  offset_time_(ros::Duration(0.0)), verbose(false), allow_blue_space(false), lms_period_(1.5), lms_order_(1),
- arr_(pnh_),min_thres_angle_(0.0)
+ arr_(pnh_),min_thres_angle_(0.0), maximum_angle_distance_ransac_(0.5), maximum_iteration_ransac_(1000)
 {
     std::string image = "/image_rect";
     std::string imu_data = "/imu_data";
@@ -102,6 +102,9 @@ calibrator::calibrator() : pnh_("~"), image_transport_(nh_), q(1.0, 0, 0, 0), q_
     pnh_.param("lsm_order",lms_order_,lms_order_);
 
     pnh_.param("minimumThresAngle",min_thres_angle_,min_thres_angle_);
+
+    pnh_.param("maximum_angle_distance_ransac",maximum_angle_distance_ransac_,maximum_angle_distance_ransac_);
+    pnh_.param("maximum_iteration_ransac",maximum_iteration_ransac_,maximum_iteration_ransac_);
 
     initializeDetection();
 
@@ -359,7 +362,7 @@ void calibrator::callback(const sensor_msgs::ImageConstPtr &image, const sensor_
         {
             result_phases = drawPhase(result_single_markers_image,z_axis_angles);
             linear_equation_coeffs = calculateLinearEquationCoefficients(dt.toSec(),z_axis_angles);
-            std::cout << "LEC:" << linear_equation_coeffs << std::endl;
+            // std::cout << "LEC:" << linear_equation_coeffs << std::endl;
             drawPhaseLSM(dt.toSec(),linear_equation_coeffs,result_phases);
         }
         else
@@ -380,12 +383,12 @@ void calibrator::callback(const sensor_msgs::ImageConstPtr &image, const sensor_
             }
         }
         
-        ROS_INFO("size:%lu",z_axis_buff.size());
+        // ROS_INFO("size:%lu",z_axis_buff.size());
         if((z_axis_buff.size() >= buff_len) && angle_diff_is_large)
         {
             // z_axis_buff.erase(z_axis_buff.begin(),z_axis_buff.begin()+(z_axis_buff.size()-buff_len));
             linear_equation_coeffs = calculateLinearEquationCoefficientsRansac(vec_v,z_axis_buff);
-            std::cout << "LEC ransac:" << linear_equation_coeffs << std::endl;
+            // std::cout << "LEC ransac:" << linear_equation_coeffs << std::endl;
             drawPhaseLSM(dt.toSec(),linear_equation_coeffs,result_phases,cv::Scalar(255,255,0));
         }
 
@@ -636,16 +639,15 @@ Eigen::VectorXd calibrator::calculateLinearEquationCoefficients(double dt, std::
         y[i] = relative_z_axis_angles[i];
     }
     Eigen::VectorXd coeffs = least_squares_method(x,y,1);
-    ROS_INFO("dt: %f LSM: %f %f",dt, coeffs[0],coeffs[1]);
+    // ROS_INFO("dt: %f LSM: %f %f",dt, coeffs[0],coeffs[1]);
     return coeffs;
 }
 
 Eigen::VectorXd calibrator::calculateLinearEquationCoefficientsRansac(std::vector<double> vec_v, std::vector<double> relative_z_axis_angles)
 {
-    double maximum_angle_distance_ransac_ = 0.5;
-    int maximum_iteration_ransac_ = 1000;
+    // double maximum_angle_distance_ransac_ = 0.5;
+    // int maximum_iteration_ransac_ = 1000;
     int maximum_inlier = 0;
-    // Eigen::VectorXd best_index(2);
     double a_best,b_best;
 
     // Eigen::MatrixXd pm(vec_v.size(),2);
@@ -680,24 +682,25 @@ Eigen::VectorXd calibrator::calculateLinearEquationCoefficientsRansac(std::vecto
         if(inlier > maximum_inlier)
         {
             maximum_inlier = inlier;
-            // best_index[0] = i0;
-            // best_index[1] = i1; 
             a_best = a;
             b_best = b;
-            std::cout << "inlier:\r\n" << inlier << "/" << relative_z_axis_angles.size() << std::endl;
-            std::cout << "a_best:\r\n" << a_best << std::endl;
-            std::cout << "b_best:\r\n" << b_best << std::endl;
          }
     }
 
     if(maximum_inlier == 0)
     {
         ROS_ERROR("Maximum inlier is zero. @ %s %d",__FILE__,__LINE__);    
+        Eigen::VectorXd retval(2);
+        retval << std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN();
+        return retval;
     }
 
+    // std::cout << "inlier:\r\n" << maximum_inlier << "/" << relative_z_axis_angles.size() << std::endl;
+    // std::cout << "a_best:\r\n" << a_best << std::endl;
+    // std::cout << "b_best:\r\n" << b_best << std::endl;
+    ROS_INFO("inlier:%d / %lu a:%f b:%f",maximum_inlier,relative_z_axis_angles.size(),a_best,b_best);
+
     // Extract inlers
-    // double a = (relative_z_axis_angles[best_index[1]] - relative_z_axis_angles[best_index[0]]) / (vec_v[best_index[1]] - vec_v[best_index[0]]);
-    // double b = relative_z_axis_angles[best_index[1]] - a * vec_v[best_index[1]];
     Eigen::VectorXd x(maximum_inlier),y(maximum_inlier);
     size_t inlier_index = 0;
     for(int i=0;i<relative_z_axis_angles.size();++i)
@@ -710,10 +713,8 @@ Eigen::VectorXd calibrator::calculateLinearEquationCoefficientsRansac(std::vecto
             ++inlier_index;
         } 
     }
-    // std::cout << "x:\r\n" << x.transpose() << std::endl; 
-    // std::cout << "y:\r\n" << y.transpose() << std::endl; 
 
-
+    // Get best coeffs
     Eigen::VectorXd coeffs =  least_squares_method(x,y,1);
     return coeffs;
 }
