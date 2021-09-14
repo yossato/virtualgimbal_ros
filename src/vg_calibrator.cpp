@@ -359,6 +359,7 @@ void calibrator::callback(const sensor_msgs::ImageConstPtr &image, const sensor_
         {
             result_phases = drawPhase(result_single_markers_image,z_axis_angles);
             linear_equation_coeffs = calculateLinearEquationCoefficients(dt.toSec(),z_axis_angles);
+            std::cout << "LEC:" << linear_equation_coeffs << std::endl;
             drawPhaseLSM(dt.toSec(),linear_equation_coeffs,result_phases);
         }
         else
@@ -369,16 +370,22 @@ void calibrator::callback(const sensor_msgs::ImageConstPtr &image, const sensor_
 
         size_t buff_len = 5000;
         static std::vector<double> z_axis_buff,vec_v;
-        std::copy(z_axis_angles.begin(),z_axis_angles.end(),std::back_inserter(z_axis_buff));
-        for(int i =0;i<z_axis_angles.size();++i)
+        
+        if(angle_diff_is_large)
         {
-            vec_v.push_back(getCenter(i).y);
+            std::copy(z_axis_angles.begin(),z_axis_angles.end(),std::back_inserter(z_axis_buff));
+            for(int i =0;i<z_axis_angles.size();++i)
+            {
+                vec_v.push_back(getCenter(i).y);
+            }
         }
+        
         ROS_INFO("size:%lu",z_axis_buff.size());
         if((z_axis_buff.size() >= buff_len) && angle_diff_is_large)
         {
             // z_axis_buff.erase(z_axis_buff.begin(),z_axis_buff.begin()+(z_axis_buff.size()-buff_len));
             linear_equation_coeffs = calculateLinearEquationCoefficientsRansac(vec_v,z_axis_buff);
+            std::cout << "LEC ransac:" << linear_equation_coeffs << std::endl;
             drawPhaseLSM(dt.toSec(),linear_equation_coeffs,result_phases,cv::Scalar(255,255,0));
         }
 
@@ -638,7 +645,15 @@ Eigen::VectorXd calibrator::calculateLinearEquationCoefficientsRansac(std::vecto
     double maximum_angle_distance_ransac_ = 0.5;
     int maximum_iteration_ransac_ = 1000;
     int maximum_inlier = 0;
-    Eigen::VectorXd best_index(2);
+    // Eigen::VectorXd best_index(2);
+    double a_best,b_best;
+
+    // Eigen::MatrixXd pm(vec_v.size(),2);
+    // Eigen::MatrixXd mat_vec_v = Eigen::Map<Eigen::MatrixXd>(vec_v.data(),1,vec_v.size());
+    // Eigen::MatrixXd rz = Eigen::Map<Eigen::MatrixXd>(relative_z_axis_angles.data(),1,relative_z_axis_angles.size());
+    // pm.block(0,0,pm.rows(),1) = mat_vec_v;
+    // pm.block(0,1,pm.rows(),1) = rz;
+    // std::cout << "pm:\r\n" << pm << std::endl;
 
     std::random_device seed_gen;
     std::mt19937 engine(seed_gen());
@@ -650,7 +665,7 @@ Eigen::VectorXd calibrator::calculateLinearEquationCoefficientsRansac(std::vecto
         // u = a*v + b
         // a = (u(i1) - u(i0)) / (v(i1) - v(i0))
         double a = (relative_z_axis_angles[i1] - relative_z_axis_angles[i0]) / (vec_v[i1] - vec_v[i0]);
-        double b = vec_v[i1] - a * relative_z_axis_angles[i1];
+        double b = relative_z_axis_angles[i1] - a * vec_v[i1];
         
         // Count a number of inlier
         int inlier = 0;
@@ -665,9 +680,14 @@ Eigen::VectorXd calibrator::calculateLinearEquationCoefficientsRansac(std::vecto
         if(inlier > maximum_inlier)
         {
             maximum_inlier = inlier;
-            best_index[0] = i0;
-            best_index[1] = i1; 
-        }
+            // best_index[0] = i0;
+            // best_index[1] = i1; 
+            a_best = a;
+            b_best = b;
+            std::cout << "inlier:\r\n" << inlier << "/" << relative_z_axis_angles.size() << std::endl;
+            std::cout << "a_best:\r\n" << a_best << std::endl;
+            std::cout << "b_best:\r\n" << b_best << std::endl;
+         }
     }
 
     if(maximum_inlier == 0)
@@ -676,13 +696,13 @@ Eigen::VectorXd calibrator::calculateLinearEquationCoefficientsRansac(std::vecto
     }
 
     // Extract inlers
-    double a = (relative_z_axis_angles[best_index[1]] - relative_z_axis_angles[best_index[0]]) / (vec_v[best_index[1]] - vec_v[best_index[0]]);
-    double b = vec_v[best_index[1]] - a * relative_z_axis_angles[best_index[1]];
+    // double a = (relative_z_axis_angles[best_index[1]] - relative_z_axis_angles[best_index[0]]) / (vec_v[best_index[1]] - vec_v[best_index[0]]);
+    // double b = relative_z_axis_angles[best_index[1]] - a * vec_v[best_index[1]];
     Eigen::VectorXd x(maximum_inlier),y(maximum_inlier);
     size_t inlier_index = 0;
     for(int i=0;i<relative_z_axis_angles.size();++i)
     {
-        double diff = std::fabs( a * vec_v[i] + b - relative_z_axis_angles[i]);
+        double diff = std::fabs( a_best * vec_v[i] + b_best - relative_z_axis_angles[i]);
         if(diff <= maximum_angle_distance_ransac_)
         {
             x[inlier_index] = (vec_v[i]);
@@ -690,8 +710,8 @@ Eigen::VectorXd calibrator::calculateLinearEquationCoefficientsRansac(std::vecto
             ++inlier_index;
         } 
     }
-    std::cout << "x:\r\n" << x.transpose() << std::endl; 
-    std::cout << "y:\r\n" << y.transpose() << std::endl; 
+    // std::cout << "x:\r\n" << x.transpose() << std::endl; 
+    // std::cout << "y:\r\n" << y.transpose() << std::endl; 
 
 
     Eigen::VectorXd coeffs =  least_squares_method(x,y,1);
