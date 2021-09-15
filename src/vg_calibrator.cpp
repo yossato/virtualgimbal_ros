@@ -73,7 +73,7 @@ calibrator::calibrator() : pnh_("~"), image_transport_(nh_), q(1.0, 0, 0, 0), q_
  last_vector(0, 0, 0), param(pnh_),
  zoom_(1.3f),cutoff_frequency_(0.5),enable_trimming_(true),
  offset_time_(ros::Duration(0.0)), verbose(false), allow_blue_space(false), lms_period_(1.5), lms_order_(1),
- arr_(pnh_),min_thres_angle_(0.0), maximum_relative_delay_ransac_(0.01), maximum_iteration_ransac_(1000)
+ arr_(pnh_),min_thres_angle_(0.0), maximum_relative_delay_ransac_(0.01), maximum_iteration_ransac_(1000), minimum_number_of_data_ransac_(10000)
 {
     std::string image = "/image_rect";
     std::string imu_data = "/imu_data";
@@ -105,6 +105,7 @@ calibrator::calibrator() : pnh_("~"), image_transport_(nh_), q(1.0, 0, 0, 0), q_
 
     pnh_.param("maximum_angle_distance_ransac",maximum_relative_delay_ransac_,maximum_relative_delay_ransac_);
     pnh_.param("maximum_iteration_ransac",maximum_iteration_ransac_,maximum_iteration_ransac_);
+    pnh_.param("minimum_number_of_data_ransac",minimum_number_of_data_ransac_,minimum_number_of_data_ransac_);
 
     initializeDetection();
 
@@ -319,12 +320,12 @@ void calibrator::callback(const sensor_msgs::ImageConstPtr &image, const sensor_
         int markers_of_board_detected = estimatePoseBoard(cam_matrix,dist_coeffs,rvec,tvec);
 
         cv::Mat result_board_image = drawResults(cv_ptr->image,markers_of_board_detected,cam_matrix,dist_coeffs,rvec,tvec);
-        cv::imshow("Board",result_board_image);
+        // cv::imshow("Board",result_board_image);
 
         std::vector<cv::Vec3d> rvecs, tvecs;
         estimatePoseSingleMarkersWithInitPose(cam_matrix,dist_coeffs,rvecs,tvecs,rvec,tvec);
         cv::Mat result_single_markers_image = drawSingleMarkersResults(cv_ptr->image,cam_matrix,dist_coeffs,rvecs,tvecs);
-        cv::imshow("Single markers",result_single_markers_image);
+        // cv::imshow("Single markers",result_single_markers_image);
 
         static cv::Vec3d old_rvec = rvec;
         std::vector<double> relative_z_axis_angles = estimateRelativeZAxisAngles(old_rvec,rvec,rvecs);
@@ -333,18 +334,7 @@ void calibrator::callback(const sensor_msgs::ImageConstPtr &image, const sensor_
         // static double fps = 0;
         static ros::Time old_time = ros_camera_info->header.stamp;
         ros::Duration dt = ros_camera_info->header.stamp - old_time;
-
-        // if(!dt.isZero())
-        // {
-        //     if(fps <= std::numeric_limits<double>::epsilon())
-        //     {
-        //         fps = 1.0 / dt.toSec();
-        //     }
-        //     else
-        //     {
-        //         fps = fps * 0.99 + 1.0 / dt.toSec() * 0.01;
-        //     }
-        // }
+        
         old_time = ros_camera_info->header.stamp;
 
         if (dt.isZero())
@@ -372,89 +362,40 @@ void calibrator::callback(const sensor_msgs::ImageConstPtr &image, const sensor_
         }
         old_rvec = rvec;
 
-        size_t buff_len = 5000;
-        static std::vector<double> delay_buff,vec_v;
+        // size_t minimum_number_of_data_ransac_ = 5000;
+        // static std::vector<double> vec_delay_,vec_v_;
         
         if(angle_diff_is_large)
         {
             // std::copy(relative_z_axis_angles.begin(),relative_z_axis_angles.end(),std::back_inserter(line_delay_buff));
             for(const auto &el:relative_z_axis_angles)
             {
-                delay_buff.push_back(el * dt.toSec()); // Convert a unit from relative angle to second.
+                vec_delay_.push_back(el * dt.toSec()); // Convert a unit from relative angle to second.
             }
             for(int i =0;i<relative_z_axis_angles.size();++i)
             {
-                vec_v.push_back(getCenter(i).y);
+                vec_v_.push_back(getCenter(i).y);
             }
         }
         
-        // ROS_INFO("size:%lu",z_axis_buff.size());
-        if(delay_buff.size() >= buff_len)
-        {
-            // z_axis_buff.erase(z_axis_buff.begin(),z_axis_buff.begin()+(z_axis_buff.size()-buff_len));
-            linear_equation_coeffs = calculateLinearEquationCoefficientsRansac(vec_v,delay_buff);
-            // std::cout << "LEC ransac:" << linear_equation_coeffs << std::endl;
-            Eigen::VectorXd coeff_to_show;
-            coeff_to_show = linear_equation_coeffs;
-            coeff_to_show = coeff_to_show * 1./dt.toSec(); // Scaling to shows
-            drawPhaseLSM(dt.toSec(),coeff_to_show,result_phases,cv::Scalar(255,255,0));
-        }
+        ROS_INFO_THROTTLE(5, "Capturing delay data: %lu / %d", vec_delay_.size(),minimum_number_of_data_ransac_);
+
+        // if((int)vec_delay_.size() >= minimum_number_of_data_ransac_)
+        // {
+        //     Eigen::VectorXd linear_equation_coeffs = calculateLinearEquationCoefficientsRansac(vec_v_,vec_delay_);
+        //     Eigen::VectorXd coeff_to_show;
+        //     coeff_to_show = linear_equation_coeffs;
+        //     coeff_to_show = coeff_to_show * 1./dt.toSec(); // Scaling to shows
+        //     drawPhaseLSM(dt.toSec(),coeff_to_show,result_phases,cv::Scalar(255,255,0));
+        // }
 
         if(!result_phases.empty())
         {
             cv::imshow("phase",result_phases);
         }     
 
-        // char key = (char)cv::waitKey(1);
-        // if(key == 'q') std::exit(EXIT_SUCCESS);
     }
 
-    // if (!camera_info_)
-    // {
-    //     camera_info_ = std::make_shared<CameraInformation>(std::string("ros_camera"), ros_camera_info->distortion_model, Eigen::Quaterniond(1.0, 0.0, 0.0, 0.0),
-    //                                                        ros_camera_info->width, ros_camera_info->height, ros_camera_info->P[0],
-    //                                                        ros_camera_info->P[5], ros_camera_info->P[2], ros_camera_info->P[6],
-    //                                                        ros_camera_info->D[0], ros_camera_info->D[1], ros_camera_info->D[2],
-    //                                                        ros_camera_info->D[3], param.line_delay);
-    //     ros_camera_info_ = ros_camera_info;
-    // }
-
-    // if (image_previous)
-    // {
-    //     // Jamp to back
-    //     if ((image->header.stamp - image_previous->header.stamp).toSec() < 0)
-    //     {
-    //         ROS_INFO("image time stamp jamp is detected.");
-    //         src_image.clear();
-    //         image_previous = nullptr;
-    //     }
-    // }
-
-    // cv_bridge::CvImageConstPtr cv_ptr;
-    // try
-    // {
-    //     cv_ptr = cv_bridge::toCvShare(image, sensor_msgs::image_encodings::BGRA8);
-    // }
-    // catch (cv_bridge::Exception &e)
-    // {
-    //     ROS_ERROR("cv_bridge exception: %s", e.what());
-    //     return;
-    // }
-
-    // cv::UMat umat_src = cv_ptr->image.getUMat(cv::ACCESS_READ, cv::USAGE_ALLOCATE_DEVICE_MEMORY);
-
-    // if (umat_src.empty())
-    // {
-    //     ROS_WARN("Input image is empty.");
-    //     return;
-    // }
-    // // TODO: check channel
-
-    // // Push back umat
-    // src_image.push_back(image->header.stamp, umat_src);
-
-    // // TODO: Limit queue size
-    // image_previous = image;
 }
 
 void calibrator::imuCallback(const sensor_msgs::Imu::ConstPtr &msg)
@@ -712,7 +653,7 @@ Eigen::VectorXd calibrator::calculateLinearEquationCoefficientsRansac(std::vecto
     // std::cout << "inlier:\r\n" << maximum_inlier << "/" << relative_z_axis_angles.size() << std::endl;
     // std::cout << "a_best:\r\n" << a_best << std::endl;
     // std::cout << "b_best:\r\n" << b_best << std::endl;
-    ROS_INFO("inlier:%d / %lu a:%f b:%f",maximum_inlier,y.size(),a_best,b_best);
+    
 
     // Extract inlers
     Eigen::VectorXd x_in(maximum_inlier),y_in(maximum_inlier);
@@ -730,6 +671,7 @@ Eigen::VectorXd calibrator::calculateLinearEquationCoefficientsRansac(std::vecto
 
     // Get best coeffs
     Eigen::VectorXd coeffs =  least_squares_method(x_in,y_in,1);
+    ROS_INFO("Inlier:%d / %lu Line_delay:%.8f [second]",maximum_inlier,y.size(),-coeffs[1]);
     return coeffs;
 }
 
@@ -759,6 +701,20 @@ void calibrator::run()
         {
             break;
         }
+
+        if((int)vec_delay_.size() >= minimum_number_of_data_ransac_)
+        {
+            Eigen::VectorXd linear_equation_coeffs = calculateLinearEquationCoefficientsRansac(vec_v_,vec_delay_);
+            // Eigen::VectorXd coeff_to_show;
+            // coeff_to_show = linear_equation_coeffs;
+            // coeff_to_show = coeff_to_show * 1./dt.toSec(); // Scaling to shows
+            // drawPhaseLSM(dt.toSec(),coeff_to_show,result_phases,cv::Scalar(255,255,0));
+            camera_subscriber_.shutdown();
+            imu_subscriber_.shutdown();
+            ros::shutdown();
+            ros::spinOnce();
+        }
+
         rate.sleep();
 
     

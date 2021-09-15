@@ -1,3 +1,4 @@
 minimumThresAngle: 0.05
 maximum_relative_delay_ransac: 0.01
 maximum_iteration_ransac: 10000
+minimum_number_of_data_ransac: 10000

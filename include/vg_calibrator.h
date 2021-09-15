@@ -140,8 +140,10 @@ private:
 
     double min_thres_angle_;
 
-    double maximum_relative_delay_ransac_ = 0.5;
-    int maximum_iteration_ransac_ = 1000;
+    double maximum_relative_delay_ransac_;
+    int maximum_iteration_ransac_;
+    std::vector<double> vec_delay_,vec_v_;
+    int minimum_number_of_data_ransac_;
 };
 
 }
