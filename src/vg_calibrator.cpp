@@ -73,7 +73,7 @@ calibrator::calibrator() : pnh_("~"), image_transport_(nh_), q(1.0, 0, 0, 0), q_
  last_vector(0, 0, 0), param(pnh_),
  zoom_(1.3f),cutoff_frequency_(0.5),enable_trimming_(true),
  offset_time_(ros::Duration(0.0)), verbose(false), allow_blue_space(false), lms_period_(1.5), lms_order_(1),
- arr_(pnh_),min_thres_angle_(0.0), maximum_angle_distance_ransac_(0.5), maximum_iteration_ransac_(1000)
+ arr_(pnh_),min_thres_angle_(0.0), maximum_relative_delay_ransac_(0.01), maximum_iteration_ransac_(1000)
 {
     std::string image = "/image_rect";
     std::string imu_data = "/imu_data";
@@ -103,7 +103,7 @@ calibrator::calibrator() : pnh_("~"), image_transport_(nh_), q(1.0, 0, 0, 0), q_
 
     pnh_.param("minimumThresAngle",min_thres_angle_,min_thres_angle_);
 
-    pnh_.param("maximum_angle_distance_ransac",maximum_angle_distance_ransac_,maximum_angle_distance_ransac_);
+    pnh_.param("maximum_angle_distance_ransac",maximum_relative_delay_ransac_,maximum_relative_delay_ransac_);
     pnh_.param("maximum_iteration_ransac",maximum_iteration_ransac_,maximum_iteration_ransac_);
 
     initializeDetection();
@@ -327,7 +327,7 @@ void calibrator::callback(const sensor_msgs::ImageConstPtr &image, const sensor_
         cv::imshow("Single markers",result_single_markers_image);
 
         static cv::Vec3d old_rvec = rvec;
-        std::vector<double> z_axis_angles = estimateRelativeZAxisAngles(old_rvec,rvec,rvecs);
+        std::vector<double> relative_z_axis_angles = estimateRelativeZAxisAngles(old_rvec,rvec,rvecs);
 
         // Get frame rate
         // static double fps = 0;
@@ -360,37 +360,44 @@ void calibrator::callback(const sensor_msgs::ImageConstPtr &image, const sensor_
         bool angle_diff_is_large = std::fabs(getDiffAngleVector(old_rvec, rvec).z()) > min_thres_angle_;
         if(angle_diff_is_large)
         {
-            result_phases = drawPhase(result_single_markers_image,z_axis_angles);
-            linear_equation_coeffs = calculateLinearEquationCoefficients(dt.toSec(),z_axis_angles);
+            result_phases = drawPhase(result_single_markers_image,relative_z_axis_angles);
+            linear_equation_coeffs = calculateLinearEquationCoefficients(dt.toSec(),relative_z_axis_angles);
             // std::cout << "LEC:" << linear_equation_coeffs << std::endl;
             drawPhaseLSM(dt.toSec(),linear_equation_coeffs,result_phases);
         }
         else
         {
-            result_phases = drawPhase(result_single_markers_image,z_axis_angles,cv::Scalar(127,127,127));
+            result_phases = drawPhase(result_single_markers_image,relative_z_axis_angles,cv::Scalar(127,127,127));
             // result_phases = result_single_markers_image.clone();
         }
         old_rvec = rvec;
 
         size_t buff_len = 5000;
-        static std::vector<double> z_axis_buff,vec_v;
+        static std::vector<double> delay_buff,vec_v;
         
         if(angle_diff_is_large)
         {
-            std::copy(z_axis_angles.begin(),z_axis_angles.end(),std::back_inserter(z_axis_buff));
-            for(int i =0;i<z_axis_angles.size();++i)
+            // std::copy(relative_z_axis_angles.begin(),relative_z_axis_angles.end(),std::back_inserter(line_delay_buff));
+            for(const auto &el:relative_z_axis_angles)
+            {
+                delay_buff.push_back(el * dt.toSec()); // Convert a unit from relative angle to second.
+            }
+            for(int i =0;i<relative_z_axis_angles.size();++i)
             {
                 vec_v.push_back(getCenter(i).y);
             }
         }
         
         // ROS_INFO("size:%lu",z_axis_buff.size());
-        if(z_axis_buff.size() >= buff_len)
+        if(delay_buff.size() >= buff_len)
         {
             // z_axis_buff.erase(z_axis_buff.begin(),z_axis_buff.begin()+(z_axis_buff.size()-buff_len));
-            linear_equation_coeffs = calculateLinearEquationCoefficientsRansac(vec_v,z_axis_buff);
+            linear_equation_coeffs = calculateLinearEquationCoefficientsRansac(vec_v,delay_buff);
             // std::cout << "LEC ransac:" << linear_equation_coeffs << std::endl;
-            drawPhaseLSM(dt.toSec(),linear_equation_coeffs,result_phases,cv::Scalar(255,255,0));
+            Eigen::VectorXd coeff_to_show;
+            coeff_to_show = linear_equation_coeffs;
+            coeff_to_show = coeff_to_show * 1./dt.toSec(); // Scaling to shows
+            drawPhaseLSM(dt.toSec(),coeff_to_show,result_phases,cv::Scalar(255,255,0));
         }
 
         if(!result_phases.empty())
@@ -650,7 +657,7 @@ Eigen::VectorXd calibrator::calculateLinearEquationCoefficients(double dt, std::
     return coeffs;
 }
 
-Eigen::VectorXd calibrator::calculateLinearEquationCoefficientsRansac(std::vector<double> vec_v, std::vector<double> relative_z_axis_angles)
+Eigen::VectorXd calibrator::calculateLinearEquationCoefficientsRansac(std::vector<double> x, std::vector<double> y)
 {
     // double maximum_angle_distance_ransac_ = 0.5;
     // int maximum_iteration_ransac_ = 1000;
@@ -666,22 +673,22 @@ Eigen::VectorXd calibrator::calculateLinearEquationCoefficientsRansac(std::vecto
 
     std::random_device seed_gen;
     std::mt19937 engine(seed_gen());
-    std::uniform_int_distribution<uint64_t> get_rand_uni_int( 0, relative_z_axis_angles.size()-1 );
+    std::uniform_int_distribution<uint64_t> get_rand_uni_int( 0, y.size()-1 );
     for(int n=0; n<maximum_iteration_ransac_; ++n)
     {
         int i0 = get_rand_uni_int(engine);
         int i1 = get_rand_uni_int(engine);
         // u = a*v + b
         // a = (u(i1) - u(i0)) / (v(i1) - v(i0))
-        double a = (relative_z_axis_angles[i1] - relative_z_axis_angles[i0]) / (vec_v[i1] - vec_v[i0]);
-        double b = relative_z_axis_angles[i1] - a * vec_v[i1];
+        double a = (y[i1] - y[i0]) / (x[i1] - x[i0]);
+        double b = y[i1] - a * x[i1];
         
         // Count a number of inlier
         int inlier = 0;
-        for(int i = 0;i<relative_z_axis_angles.size();++i)
+        for(int i = 0;i<y.size();++i)
         {
-            double diff = std::fabs( a * vec_v[i] + b - relative_z_axis_angles[i]);
-            if(diff <= maximum_angle_distance_ransac_)
+            double diff = std::fabs( a * x[i] + b - y[i]);
+            if(diff <= maximum_relative_delay_ransac_)
             {
                 ++inlier;
             } 
@@ -705,24 +712,24 @@ Eigen::VectorXd calibrator::calculateLinearEquationCoefficientsRansac(std::vecto
     // std::cout << "inlier:\r\n" << maximum_inlier << "/" << relative_z_axis_angles.size() << std::endl;
     // std::cout << "a_best:\r\n" << a_best << std::endl;
     // std::cout << "b_best:\r\n" << b_best << std::endl;
-    ROS_INFO("inlier:%d / %lu a:%f b:%f",maximum_inlier,relative_z_axis_angles.size(),a_best,b_best);
+    ROS_INFO("inlier:%d / %lu a:%f b:%f",maximum_inlier,y.size(),a_best,b_best);
 
     // Extract inlers
-    Eigen::VectorXd x(maximum_inlier),y(maximum_inlier);
+    Eigen::VectorXd x_in(maximum_inlier),y_in(maximum_inlier);
     size_t inlier_index = 0;
-    for(int i=0;i<relative_z_axis_angles.size();++i)
+    for(int i=0;i<y.size();++i)
     {
-        double diff = std::fabs( a_best * vec_v[i] + b_best - relative_z_axis_angles[i]);
-        if(diff <= maximum_angle_distance_ransac_)
+        double diff = std::fabs( a_best * x[i] + b_best - y[i]);
+        if(diff <= maximum_relative_delay_ransac_)
         {
-            x[inlier_index] = (vec_v[i]);
-            y[inlier_index] = (relative_z_axis_angles[i]);
+            x_in[inlier_index] = (x[i]);
+            y_in[inlier_index] = (y[i]);
             ++inlier_index;
         } 
     }
 
     // Get best coeffs
-    Eigen::VectorXd coeffs =  least_squares_method(x,y,1);
+    Eigen::VectorXd coeffs =  least_squares_method(x_in,y_in,1);
     return coeffs;
 }
 

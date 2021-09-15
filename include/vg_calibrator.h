@@ -81,7 +81,7 @@ private:
     Eigen::Vector3d getDiffAngleVector(cv::Vec3d &old_rvec, cv::Vec3d &current_rvec);
     cv::Point2f getCenter(int i);
     Eigen::VectorXd calculateLinearEquationCoefficients(double dt, std::vector<double> relative_z_axis_angles);
-    Eigen::VectorXd calculateLinearEquationCoefficientsRansac(std::vector<double> vec_v, std::vector<double> relative_z_axis_angles);
+    Eigen::VectorXd calculateLinearEquationCoefficientsRansac(std::vector<double> x, std::vector<double> y);
     Eigen::VectorXd drawPhaseLSM(double dt, Eigen::VectorXd coeffs, cv::Mat &image, cv::Scalar color=cv::Scalar(0,255,0));
 
     ros::NodeHandle nh_;
@@ -140,7 +140,7 @@ private:
 
     double min_thres_angle_;
 
-    double maximum_angle_distance_ransac_ = 0.5;
+    double maximum_relative_delay_ransac_ = 0.5;
     int maximum_iteration_ransac_ = 1000;
 };
 
