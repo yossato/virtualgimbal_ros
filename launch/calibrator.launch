@@ -14,6 +14,7 @@
     <node name="virtualgimbal_ros" pkg="virtualgimbal_ros" type="line_delay_estimator_node" output="screen">
         <rosparam command="load"    file="$(find virtualgimbal_ros)/params/detector_params.yaml"/>
         <rosparam command="load"    file="$(find virtualgimbal_ros)/params/marker_params.yaml"/>
+        <rosparam command="load"    file="$(find virtualgimbal_ros)/params/line_delay_estimation_params.yaml"/>
         <param name="image"             value="$(arg image)"/>
         <param name="imu_data"          value="$(arg imu_data)"/>
         <param name="zoom_factor"       value="$(arg zoom_factor)"/>
