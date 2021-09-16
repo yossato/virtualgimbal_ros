@@ -73,7 +73,7 @@ calibrator::calibrator() : pnh_("~"), image_transport_(nh_), q(1.0, 0, 0, 0), q_
  last_vector(0, 0, 0), param(pnh_),
  zoom_(1.3f),cutoff_frequency_(0.5),enable_trimming_(true),
  offset_time_(ros::Duration(0.0)), verbose(false), allow_blue_space(false), lms_period_(1.5), lms_order_(1),
- arr_(pnh_),min_angle_thres_(0.0), maximum_relative_delay_ransac_(0.01), maximum_iteration_ransac_(1000), minimum_number_of_data_ransac_(10000)
+ arr_(pnh_),min_angle_thres_(0.05), maximum_relative_delay_ransac_(0.01), maximum_iteration_ransac_(10000), minimum_number_of_data_ransac_(10000)
 {
     std::string image = "/image_rect";
     std::string imu_data = "/imu_data";

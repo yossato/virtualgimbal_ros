@@ -138,7 +138,7 @@ private:
     std::vector< int > ids_;
     std::vector< std::vector< cv::Point2f > > corners_, rejected_;
 
-    double min_thres_angle_;
+    double min_angle_thres_;
 
     double maximum_relative_delay_ransac_;
     int maximum_iteration_ransac_;
