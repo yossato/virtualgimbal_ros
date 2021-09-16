@@ -8,6 +8,7 @@ VirtualGimbal ROSはOpenCLによるGPU処理で高速に動作します。例え
 1.動画をジャイロセンサで計測した角速度で安定化するvirtualgimbal_ros_node  
 2.動画とジャイロセンサ間のタイムスタンプのオフセットを精密測定するsynchronizer_node  
 3.ローリングシャッターのCMOSセンサの行ことに異なる読み出し遅延時間を精密測定するline_delay_estimator_node  
+  
 [![](https://github.com/yossato/images/blob/master/youtube.png?raw=true)](https://www.youtube.com/watch?v=ft6v7h5kN6g&feature=youtu.be) 
   
 # 1.1 Install dependencies  
@@ -33,7 +34,8 @@ IntelのCPU内蔵GPUを使う場合は次のコマンドによりOpenCL用のド
 ### 1.1.3 AMD
 T.B.D.  
 
-# 2. Stabilizer Tutorial
+# 2. Tutorials
+## 2.1 Stabilizer Tutorial
 サンプル動画で安定化の動作を体験してみます。まず[RealSense D435iで撮影した動画のrosbag](https://www.dropbox.com/s/43ucvmjfjhxeyzg/soleil.bag?dl=1)をダウンロードします。  
 以下のコマンドを別々のターミナルで実行してください。    
 ```
@@ -46,7 +48,7 @@ Input imageが安定化前の動画で、Stabilized Imageが安定化後の動�
 ![Input Image ](https://github.com/yossato/images/blob/master/Screenshot%20from%202020-02-29%2023-10-14.png?raw=true)
 ![Stabilized Image ](https://github.com/yossato/images/blob/master/Screenshot%20from%202020-02-29%2023-10-10.png?raw=true)  
   
-# 3. Line Delay Estimation Tutorial  
+## 2.2 Line Delay Estimation Tutorial  
 サンプル動画でLine delayの推定を体験してみます。[RealSense D435iで撮影したキャリブレーション用のrosbag](https://www.dropbox.com/s/8poxue1coy89fde/aruco_board_d435i.bag?dl=1)をダウンロードします。
 以下のコマンドを別々のターミナルで実行してください。
 ```
