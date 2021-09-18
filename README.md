@@ -54,7 +54,7 @@ Input imageが安定化前の動画で、Stabilized Imageが安定化後の動�
 以下のコマンドを別々のターミナルで実行してください。
 ```
 $ roslaunch virtualgimbal_ros estimate_line_delay_d435i.launch  
-$ rosbag play aruco_board_d435i.bag --clock  # rosbagの置かれたディレクトリで実行  
+$ rosbag play aruco_board_d435i.bag --clock -s 10 # rosbagの置かれたディレクトリで実行  
 ```
 Line delayを推定する画面が起動します。回転するArUcoボードから、マーカを1個づつ個別に検出して、角度の変化を計算します。最後に例えば`Inlier:7999 / 10198 Line_delay:0.00003025 [second] `と表示されたらline delayの推定が完了です。ここでの値は毎回多少変化します。このline delayの値は後述するvirtualgimbal_ros_nodeのパラメータのline_delayに設定します。
 
