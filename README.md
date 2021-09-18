@@ -116,7 +116,7 @@ Angular velocity.
 |correlation_time|float|15.0|SADを計算する時間の長さ(秒)。長くするとオフセットの推定精度が向上するが、推定に必要な動画の長さが長くなり、推定に時間がかかるようになる。|
     
 ## 3.3 line_delay_estimator_node
-line_delay_estimator_nodeは、一般的なローリングシャッターがCMOSイメージセンサが撮像するときに1行毎読み込むために生じる遅れ時間を推定する。回転する剛体のマーカを撮像すると行ごとに撮影タイミングが異なり画像の上下で映るマーカの角度がわずかに変化する。角度の変化から1行ごとに生じるline delayを推定する。line delayの単位は秒。実行後して十分なデータが取得できると最後に結果が表示される。
+line_delay_estimator_nodeは、一般的なローリングシャッターのCMOSイメージセンサ有するLine delayを推定する。ローリングシャッターのCMOSイメージセンサは、撮像するときに1行毎読み込むために、得られる画像の各行で撮影タイミングが異なる。この1行ごとの撮影タイミングの差を本ノードは推定できる。このノードは画面にArUcoマーカのボードを表示する。line delayの推定を行うには、このArUcoマーカのボードを撮影しながらカメラを回転される。カメラを回転させると相対的にボードが回転する。この回転するボードのマーカを撮像すると行ごとに撮影タイミングが異なり、撮影した画像の上下で映るマーカの角度がわずかに変化する。角度の変化から1行ごとに生じるline delayを推定できる。line delayの単位は秒。実行後して十分なデータが取得できると最後に結果が表示される。
     
 ### 3.3.1 Subscribe Topics
 #### image (sensor_msgs/Image)  
@@ -133,10 +133,13 @@ Camera metadata.
 |maximum_relative_delay_ransac|float|0.01|Line delayを推定するときに外れ値の影響を除去するRANSACアルゴリズムについて、inlierとしてみなす仮モデルによる予測値とサンプルの差分の大きさ。(0,1]で設定する。値を大きくすると外れ値に弱くなる。|
 |maximum_iteration_ransac|float|10000|RANSACの最大反復回数。回数を増やすと計算に時間がかかるが結果が洗練される。|
 |minimum_number_of_data_ransac|float|10000|RANSACに入力するデータの数。値を大きくすると推定される結果が安定するが、データ取得に時間がかかるようになる。|
+|generate_aruco_board|bool|false|trueに設定すると印刷して使うためのPNG形式のArUcoボードを生成する。後述するmarker_params.yamlに書かれたArUcoボードのパラメータを変更したときなどはtrueに設定して、PNG画像を再生成すること。|
+|show_gui|bool|true|falseに設定すると、キャリブレーション状況の確認用GUIウィンドウを表示しません。|
 
 Line delay推定用のパラメータはparams/line_delay_estimation_params.yamlに記録してある。  
 このノードはOpenCVのArUcoマーカを利用しているため、他にもArUcoマーカの検出用のパラメータが多数存在し、params/detector_params.yamlとparams/marker_params.yamlに保存してある。詳細は[Detection of ArUco Markers](https://docs.opencv.org/4.5.2/d5/dae/tutorial_aruco_detection.html)を参考のこと。これらのパラメータはROS launchで起動するときにrosparamコマンドにより読み込まれる。
-
+  
+    
 # 4. Launch files
 ## 4.1 stabilize.launch
 イメージストリームを安定化します。  
