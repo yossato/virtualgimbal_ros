@@ -4,11 +4,12 @@ VirtualGimbal ROSは、カメラ映像を通じたロボット操縦時の視認
 VirtualGimbal ROSはOpenCLによるGPU処理で高速に動作します。例えば、Intel RealSense D435iの1920x1080 pixel, 30 fpsの動画をノートPC(Core i7-8550U)でリアルタイムに安定化できることを確認しています。  
   
 # 1. Overview  
-このパッケージは3種類のノードから成り立っています。
+このパッケージは3種類のノードから成り立っています。  
+  
 1.動画をジャイロセンサで計測した角速度で安定化するvirtualgimbal_ros_node  
 2.動画とジャイロセンサ間のタイムスタンプのオフセットを精密測定するsynchronizer_node  
 3.ローリングシャッターのCMOSセンサの行ことに異なる読み出し遅延時間を精密測定するline_delay_estimator_node  
-  
+   
 [![](https://github.com/yossato/images/blob/master/youtube.png?raw=true)](https://www.youtube.com/watch?v=ft6v7h5kN6g&feature=youtu.be) 
   
 # 1.1 Install dependencies  
@@ -49,13 +50,13 @@ Input imageが安定化前の動画で、Stabilized Imageが安定化後の動�
 ![Stabilized Image ](https://github.com/yossato/images/blob/master/Screenshot%20from%202020-02-29%2023-10-10.png?raw=true)  
   
 ## 2.2 Line Delay Estimation Tutorial  
-サンプル動画でLine delayの推定を体験してみます。[RealSense D435iで撮影したキャリブレーション用のrosbag](https://www.dropbox.com/s/e4onsul90wjbsad/aruco_board_d435i.bag?dl=1)をダウンロードします。
+サンプル動画でローリングシャッターのCMOSカメラのLine delayの推定を体験してみます。Line delayの値は動画の安定化を高精度に実行するときに必要です。[RealSense D435iで撮影したキャリブレーション用のrosbag](https://www.dropbox.com/s/e4onsul90wjbsad/aruco_board_d435i.bag?dl=1)をダウンロードします。
 以下のコマンドを別々のターミナルで実行してください。
 ```
 $ roslaunch virtualgimbal_ros estimate_line_delay_d435i.launch  
 $ rosbag play aruco_board_d435i.bag --clock  # rosbagの置かれたディレクトリで実行  
 ```
-Line delayを推定する画面が起動します。回転するArUcoボードから、マーカを1個づつ個別に検出して、角度の変化を計算する。最後に例えば`Inlier:7999 / 10198 Line_delay:0.00003025 [second] `と表示されたらline delayの推定が完了している。ここでの値は毎回多少変化する。このline delayの値は後述するvirtualgimbal_ros_nodeのパラメータのline_delayに設定する。
+Line delayを推定する画面が起動します。回転するArUcoボードから、マーカを1個づつ個別に検出して、角度の変化を計算します。最後に例えば`Inlier:7999 / 10198 Line_delay:0.00003025 [second] `と表示されたらline delayの推定が完了です。ここでの値は毎回多少変化します。このline delayの値は後述するvirtualgimbal_ros_nodeのパラメータのline_delayに設定します。
 
 # 3. Nodes
 ## 3.1 virtualgimbal_ros_node  
