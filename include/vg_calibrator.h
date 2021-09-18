@@ -53,61 +53,62 @@
 #include <random>
 namespace virtualgimbal
 {
-using MatrixPtr = std::shared_ptr<std::vector<float>>;
+    using MatrixPtr = std::shared_ptr<std::vector<float>>;
 
-using Rotation = StampedDeque<Eigen::Quaterniond>;
-using Image = StampedDeque<cv::UMat>;
-using UMatPtr = std::unique_ptr<cv::UMat>;
-class calibrator
-{
-public:
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-    calibrator();
-    ~calibrator();
-    void run();
-private:
-    void initializeDetection();
-    void detectMarkers(const cv::Mat &image, const cv::Mat &cam_matrix, const cv::Mat &dist_coeffs);
-    int  estimatePoseBoard(const cv::Mat &cam_matrix, const cv::Mat &dist_coeffs, cv::Vec3d &rvec, cv::Vec3d &tvec);
-    void estimatePoseSingleMarkers(const cv::Mat &cam_matrix, const cv::Mat &dist_coeffs, std::vector<cv::Vec3d> &rvecs, std::vector<cv::Vec3d> &tvecs);
-    void estimatePoseSingleMarkersWithInitPose(const cv::Mat &cam_matrix, const cv::Mat &dist_coeffs, std::vector<cv::Vec3d> &rvecs, std::vector<cv::Vec3d> &tvecs, cv::Vec3d &init_rvec, cv::Vec3d &init_tvec);
-    cv::Mat drawResults(const cv::Mat &image, const int markers_of_board_detected,const cv::Mat &cam_matrix, const cv::Mat &dist_coeffs, cv::Vec3d &rvec, cv::Vec3d &tvec);
-    cv::Mat drawSingleMarkersResults(const cv::Mat &image, const cv::Mat &cam_matrix, const cv::Mat &dist_coeffs, std::vector<cv::Vec3d> &rvecs, std::vector<cv::Vec3d> &tvecs);
-    void callback(const sensor_msgs::ImageConstPtr& image, const sensor_msgs::CameraInfoConstPtr& ros_camera_info);
-    void imuCallback(const sensor_msgs::Imu::ConstPtr &msg);
-    std::vector<double> estimateRelativeZAxisAngles(cv::Vec3d &old_rvec, cv::Vec3d &current_rvec, std::vector<cv::Vec3d> &rvecs);
-    cv::Mat drawPhase(const cv::Mat &image, std::vector<double> relative_z_axis_angles, cv::Scalar color=cv::Scalar(0,255,255));
-    cv::Mat createMarkersImage2(const ArucoRos &ar);
-    Eigen::Vector3d getDiffAngleVector(cv::Vec3d &old_rvec, cv::Vec3d &current_rvec);
-    cv::Point2f getCenter(int i);
-    Eigen::VectorXd calculateLinearEquationCoefficients(double dt, std::vector<double> relative_z_axis_angles);
-    Eigen::VectorXd calculateLinearEquationCoefficientsRansac(std::vector<double> x, std::vector<double> y);
-    Eigen::VectorXd drawPhaseLSM(double dt, Eigen::VectorXd coeffs, cv::Mat &image, cv::Scalar color=cv::Scalar(0,255,0));
+    using Rotation = StampedDeque<Eigen::Quaterniond>;
+    using Image = StampedDeque<cv::UMat>;
+    using UMatPtr = std::unique_ptr<cv::UMat>;
+    class calibrator
+    {
+    public:
+        EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+        calibrator();
+        ~calibrator();
+        void run();
 
-    ros::NodeHandle nh_;
-    ros::NodeHandle pnh_;
-    image_transport::ImageTransport image_transport_;
-    image_transport::CameraSubscriber camera_subscriber_;
+    private:
+        void initializeDetection();
+        void detectMarkers(const cv::Mat &image, const cv::Mat &cam_matrix, const cv::Mat &dist_coeffs);
+        int estimatePoseBoard(const cv::Mat &cam_matrix, const cv::Mat &dist_coeffs, cv::Vec3d &rvec, cv::Vec3d &tvec);
+        void estimatePoseSingleMarkers(const cv::Mat &cam_matrix, const cv::Mat &dist_coeffs, std::vector<cv::Vec3d> &rvecs, std::vector<cv::Vec3d> &tvecs);
+        void estimatePoseSingleMarkersWithInitPose(const cv::Mat &cam_matrix, const cv::Mat &dist_coeffs, std::vector<cv::Vec3d> &rvecs, std::vector<cv::Vec3d> &tvecs, cv::Vec3d &init_rvec, cv::Vec3d &init_tvec);
+        cv::Mat drawResults(const cv::Mat &image, const int markers_of_board_detected, const cv::Mat &cam_matrix, const cv::Mat &dist_coeffs, cv::Vec3d &rvec, cv::Vec3d &tvec);
+        cv::Mat drawSingleMarkersResults(const cv::Mat &image, const cv::Mat &cam_matrix, const cv::Mat &dist_coeffs, std::vector<cv::Vec3d> &rvecs, std::vector<cv::Vec3d> &tvecs);
+        void callback(const sensor_msgs::ImageConstPtr &image, const sensor_msgs::CameraInfoConstPtr &ros_camera_info);
+        void imuCallback(const sensor_msgs::Imu::ConstPtr &msg);
+        std::vector<double> estimateRelativeZAxisAngles(cv::Vec3d &old_rvec, cv::Vec3d &current_rvec, std::vector<cv::Vec3d> &rvecs);
+        cv::Mat drawPhase(const cv::Mat &image, std::vector<double> relative_z_axis_angles, cv::Scalar color = cv::Scalar(0, 255, 255));
+        cv::Mat createMarkersImage2(const ArucoRos &ar);
+        Eigen::Vector3d getDiffAngleVector(cv::Vec3d &old_rvec, cv::Vec3d &current_rvec);
+        cv::Point2f getCenter(int i);
+        Eigen::VectorXd calculateLinearEquationCoefficients(double dt, std::vector<double> relative_z_axis_angles);
+        Eigen::VectorXd calculateLinearEquationCoefficientsRansac(std::vector<double> x, std::vector<double> y);
+        Eigen::VectorXd drawPhaseLSM(double dt, Eigen::VectorXd coeffs, cv::Mat &image, cv::Scalar color = cv::Scalar(0, 255, 0));
 
-    Parameters param; 
-    ArucoRos arr_;
+        ros::NodeHandle nh_;
+        ros::NodeHandle pnh_;
+        image_transport::ImageTransport image_transport_;
+        image_transport::CameraSubscriber camera_subscriber_;
 
-    cv::Ptr<cv::aruco::Dictionary> dictionary_;
-    cv::Ptr<cv::aruco::GridBoard> gridboard_;
-    cv::Ptr<cv::aruco::Board> board_;
-    std::vector< int > ids_;
-    std::vector< std::vector< cv::Point2f > > corners_, rejected_;
+        Parameters param;
+        ArucoRos arr_;
 
-    double min_angle_thres_;
+        cv::Ptr<cv::aruco::Dictionary> dictionary_;
+        cv::Ptr<cv::aruco::GridBoard> gridboard_;
+        cv::Ptr<cv::aruco::Board> board_;
+        std::vector<int> ids_;
+        std::vector<std::vector<cv::Point2f>> corners_, rejected_;
 
-    double maximum_relative_delay_ransac_;
-    int maximum_iteration_ransac_;
-    std::vector<double> vec_delay_,vec_v_;
-    int minimum_number_of_data_ransac_;
-    bool generate_aruco_board_;
-    bool show_gui_;
-};
+        double min_angle_thres_;
+
+        double maximum_relative_delay_ransac_;
+        int maximum_iteration_ransac_;
+        std::vector<double> vec_delay_, vec_v_;
+        int minimum_number_of_data_ransac_;
+        bool generate_aruco_board_;
+        bool show_gui_;
+    };
 
 }
 
-#endif  //__VIRTUALGIMAL_ROS_VG_CALIBRATOR_H__
+#endif //__VIRTUALGIMAL_ROS_VG_CALIBRATOR_H__
