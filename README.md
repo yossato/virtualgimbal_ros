@@ -1,14 +1,14 @@
 # virtualgimbal_ros
 VirtualGimbal ROSは、Inertial measurement Unit (IMU)で計測した角速度に基づいてブレを補正して、動画を安定化します。  
 VirtualGimbal ROSは、カメラ映像を通じたロボット操縦時の視認性向上、画像認識・物体追跡性能向上および映像撮影品質の向上を目的として開発されました。  
-VirtualGimbal ROSはOpenCLによるGPU処理で高速に動作します。例えば、Intel RealSense D435iの1920x1080 pixel, 30 fpsの動画をノートPC(Core i7-8550U)でリアルタイムに安定化できることを確認しています。  
+VirtualGimbal ROSは、OpenCLによるGPU処理で高速に動作します。例えば、Intel RealSense D435iの1920x1080 pixel, 30 fpsの動画をノートPC(Core i7-8550U)でリアルタイムに安定化できることを確認しています。  
   
 # 1. Overview  
-このパッケージは3種類のノードから成り立っています。  
+このパッケージは3種類のノードから構成されています。  
   
-1.動画をジャイロセンサで計測した角速度で安定化するvirtualgimbal_ros_node  
-2.動画とジャイロセンサ間のタイムスタンプのオフセットを精密測定するsynchronizer_node  
-3.ローリングシャッターのCMOSセンサの行ことに異なる読み出し遅延時間を精密測定するline_delay_estimator_node  
+1. 動画をジャイロセンサで計測した角速度で安定化する virtualgimbal_ros_node  
+1. 動画とジャイロセンサ間のタイムスタンプのオフセットを精密測定する synchronizer_node  
+1. ローリングシャッターのCMOSセンサの行ことに異なる読み出し遅延時間を精密測定する line_delay_estimator_node  
    
 [![](https://github.com/yossato/images/blob/master/youtube.png?raw=true)](https://www.youtube.com/watch?v=ft6v7h5kN6g&feature=youtu.be) 
   
@@ -56,7 +56,9 @@ Input imageが安定化前の動画で、Stabilized Imageが安定化後の動�
 $ roslaunch virtualgimbal_ros estimate_line_delay_d435i.launch  
 $ rosbag play aruco_board_d435i.bag --clock -s 10 # rosbagの置かれたディレクトリで実行  
 ```
-Line delayを推定する画面が起動します。回転するArUcoボードから、マーカを1個づつ個別に検出して、角度の変化を計算します。最後に例えば`Inlier:7999 / 10198 Line_delay:0.00003025 [second] `と表示されたらline delayの推定が完了です。ここでの値は毎回多少変化します。このline delayの値は後述するvirtualgimbal_ros_nodeのパラメータのline_delayに設定します。
+Line delayを推定する画面が起動します。
+![Line delay estimation](https://github.com/yossato/images/blob/master/line_delay_estimation.png?raw=true)
+回転するArUcoボードから、マーカを1個づつ個別に検出して、角度の変化を計算します。最後に例えば `Inlier:7999 / 10198 Line_delay:0.00003025 [second] `と表示されたらline delayの推定が完了です。ここでの値は毎回多少変化します。このline delayの値は後述するvirtualgimbal_ros_nodeのパラメータのline_delayに設定します。
 
 # 3. Nodes
 ## 3.1 virtualgimbal_ros_node  
@@ -94,6 +96,14 @@ Stabilized camera metadata.
 |lsm_period|double|1.5|VirtualGimbalの動画安定化アルゴリズムは、時系列方向に平滑化したカメラ角度と、平滑化していない生のカメラ角度の差の情報から、画像のシフト量を計算している。このときの時系列のカメラ角度を平滑化する方法としてVirtualGimbal ROSでは、最小二乗法を採用した。最小二乗法は任意の次数とフィッティングの対象とする時間幅を選択できる。このlsm_periodは、最小二乗法(least squares method)を計算する時間幅(秒)である。値を大きくすると、長時間のカメラの動きから平滑化したカメラ角度を計算するため、動画の安定化能力が向上するが、急なカメラの動きに追従できなくなる。値を小さくすると、短時間のカメラの動きをから平滑化したカメラ角度を計算するため、安定化能力が低下するがカメラの急な動きに追従できるようになる。|
 |lsm_order|double|1|最小二乗法でフィッティングする曲線の次数。1だと1次式の直線でフィッティングする。2だと2次式の放物線でフィッティングする。次数を上げると追従性が向上するが安定化能力が低下する。1次式でフィッティングすると安定性は高まるが追従性が低い。|
   
+## 3.1.4 Launch files
+- stabilize.launch
+  - イメージストリームを安定化します。  
+- stabilize_realsense_rgb.launch
+  - Intel RealSense D435iのRGBイメージストリームについてIMUの角速度を用いて安定化します。paramとしてD435iのトピック名を指定してstabilize.launchを起動します。画像サイズは1920x1080 pixelを想定しています。  
+- stabilize_realsense_ir.launch
+  - Intel RealSense D435iのirカメラの左側のイメージストリームについてIMUの角速度を用いて安定化します。paramとしてD435iのトピック名を指定してstabilize.launchを起動します。  
+  
 ## 3.2 synchronizer_node  
 synchronizer_node は動画とIMU間のタイムスタンプのオフセットを精密測定するノード。一般的に、カメラの動画とIMUの角速度のタイムスタンプには僅かな時刻の差(オフセット)がある。動画の安定化にはミリ秒以下の精度の同期が必要になるため、このオフセットを正しく設定しないと動画の安定化品質が低下する。  
 virtualgimbal_rosではカメラのシャッターの露光中心をタイムスタンプの基準として利用している。synchronizer_nodeはSum of Absolute Differences (SAD)により動画とIMUの角速度の相関を計算し最も良く相関があるオフセットの値を算出する。もう少し詳しく説明すると本ノードは、1.動画からオプティカルフローを計算、2.オプティカルフローから角速度を推定、3.推定された角速度とIMUにより計測された角速度の相関をオフセットを少しずつ変化させながら計算、という処理を実行する。相関が一番良いオフセットの部分で一番SADの値が小さくなるためオフセットを推定できる。得られたオフセットはstabilize.launchのparamのoffset_timeにセットして使用する。  
@@ -115,9 +125,21 @@ Angular velocity.
 |imu_data|string|imu_data|入力角速度トピック|
 |maximum_offset_time|float|0.5|SADを計算するオフセットの最大値(秒)。動画とIMUのタイムスタンプ差の最大値を指定してください。値を大きくすると動画とIMUのタイムスタンプの誤差が大きくてもオフセットの推定が可能ですが、計算に時間がかかるようになります。|
 |correlation_time|float|15.0|SADを計算する時間の長さ(秒)。長くするとオフセットの推定精度が向上するが、推定に必要な動画の長さが長くなり、推定に時間がかかるようになる。|
-    
+
+### 3.2.3 Launch files  
+- synchronizer.launch
+    - 画像ストリームとIMUの時刻同期に必要なオフセット時間を推定します。  
+- synchronize_realsense_rgb.launch
+    - Intel RealSense D435iのRGBイメージストリームとIMUの同期を取ります。  
+- synchronize_realsense_ir.launch
+    - RGBと同様にIRイメージストリームについてもIMUとの同期を取ります。  
+
+
 ## 3.3 line_delay_estimator_node
-line_delay_estimator_nodeは、一般的なローリングシャッターのCMOSイメージセンサ有するLine delayを推定する。ローリングシャッターのCMOSイメージセンサは、撮像するときに1行毎読み込むために、得られる画像の各行で撮影タイミングが異なる。この1行ごとの撮影タイミングの差を本ノードは推定できる。このノードは画面にArUcoマーカのボードを表示する。line delayの推定を行うには、このArUcoマーカのボードを撮影しながらカメラを光軸周りに回転させる。カメラを回転させると相対的にボードが回転する。この回転するボードのマーカを撮像すると行ごとに撮影タイミングが異なり、撮影した画像の上下で映るマーカの角度がわずかに変化する。角度の変化から1行ごとに生じるline delayを推定できる。line delayの単位は秒。実行後して十分なデータが取得できると最後に結果が表示される。本ノードは自動で終了される。
+line_delay_estimator_nodeは、一般的なローリングシャッターのCMOSイメージセンサ有するLine delayを推定します。ローリングシャッターのCMOSイメージセンサは、撮像するときに1行毎読み込むために、得られる画像の各行で撮影タイミングが異なる。この1行ごとの撮影タイミングの差を本ノードは推定できます。このノードは画面にArUcoマーカのボードを表示します。line delayの推定を行うには、このArUcoマーカのボードを撮影しながらカメラを光軸周りに回転させます。この回転するボードのマーカを撮像すると行ごとに撮影タイミングが異なり、撮影した画像の上下で映るマーカの角度がわずかに変化する。角度の変化から1行ごとに生じるline delayを推定できる。line delayの単位は秒です。
+カメラの回転速度が十分に速く、Line delayを計測できているときは下図のような黃色の位相と緑色のフィッティングした直線が表示されます。カメラの回転速度が遅いときはクレーアウトした位相が表示されます。
+![Line delay estimation](https://github.com/yossato/images/blob/master/line_delay_estimation.png?raw=true)
+実行後して十分なデータが取得できると最後に結果がターミナルに表示されます。本ノードは自動で終了します。
     
 ### 3.3.1 Subscribe Topics
 #### image (sensor_msgs/Image)  
@@ -141,23 +163,11 @@ Line delay推定用のパラメータはparams/line_delay_estimation_params.yaml
 このノードはOpenCVのArUcoマーカを利用しているため、他にもArUcoマーカの検出用のパラメータが多数存在し、params/detector_params.yamlとparams/marker_params.yamlに保存してある。詳細は[Detection of ArUco Markers](https://docs.opencv.org/4.5.2/d5/dae/tutorial_aruco_detection.html)を参考のこと。これらのパラメータはROS launchで起動するときにrosparamコマンドにより読み込まれる。
   
     
-# 4. Launch files
-## 4.1 stabilize.launch
-イメージストリームを安定化します。  
+### 3.3.3 Launch files
+- estimate_line_delay.launch
+    - 画像ストリームからCMOSイメージセンサーのLine delayを推定します。  
+- estimate_line_delay_d435i.launch
+    - RealSense D435iの画像ストリームからCMOSイメージセンサーのLine delayを推定します。  
 
-## 4.2 stabilize_realsense_rgb.launch
-Intel RealSense D435iのRGBイメージストリームについてIMUの角速度を用いて安定化します。paramとしてD435iのトピック名を指定してstabilize.launchを起動します。画像サイズは1920x1080 pixelを想定しています。
-
-## 4.3 stabilize_realsense_ir.launch
-Intel RealSense D435iのirカメラの左側のイメージストリームについてIMUの角速度を用いて安定化します。paramとしてD435iのトピック名を指定してstabilize.launchを起動します。
-
-## 4.4 synchronizer.launch
-画像ストリームとIMUの時刻同期に必要なオフセット時間を推定します。  
-
-## 4.5 synchronize_realsense_rgb.launch
-Intel RealSense D435iのRGBイメージストリームとIMUの同期を取ります。  
-
-## 4.6 synchronize_realsense_ir.launch
-RGBと同様にIRイメージストリームについてもIMUとの同期を取ります。  
 
 
