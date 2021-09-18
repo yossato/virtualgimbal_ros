@@ -73,7 +73,7 @@ calibrator::calibrator() : pnh_("~"), image_transport_(nh_), q(1.0, 0, 0, 0), q_
  last_vector(0, 0, 0), param(pnh_),
  zoom_(1.3f),cutoff_frequency_(0.5),enable_trimming_(true),
  offset_time_(ros::Duration(0.0)), verbose(false), allow_blue_space(false), lms_period_(1.5), lms_order_(1),
- arr_(pnh_),min_angle_thres_(0.05), maximum_relative_delay_ransac_(0.01), maximum_iteration_ransac_(10000), minimum_number_of_data_ransac_(10000)
+ arr_(pnh_),min_angle_thres_(0.05), maximum_relative_delay_ransac_(0.01), maximum_iteration_ransac_(10000), minimum_number_of_data_ransac_(10000), generate_aruco_board_(false)
 {
     std::string image = "/image_rect";
     std::string imu_data = "/imu_data";
@@ -106,6 +106,8 @@ calibrator::calibrator() : pnh_("~"), image_transport_(nh_), q(1.0, 0, 0, 0), q_
     pnh_.param("maximum_angle_distance_ransac",maximum_relative_delay_ransac_,maximum_relative_delay_ransac_);
     pnh_.param("maximum_iteration_ransac",maximum_iteration_ransac_,maximum_iteration_ransac_);
     pnh_.param("minimum_number_of_data_ransac",minimum_number_of_data_ransac_,minimum_number_of_data_ransac_);
+
+    pnh_.param("generate_aruco_board",generate_aruco_board_,generate_aruco_board_);
 
     initializeDetection();
 
@@ -690,8 +692,14 @@ Eigen::VectorXd calibrator::drawPhaseLSM(double dt, Eigen::VectorXd coeffs, cv::
 void calibrator::run()
 {
     cv::Mat aruco_board = createMarkersImage2(arr_);
-    
-        ros::Rate rate(120);
+
+    if(generate_aruco_board_)
+    {
+        std::string output_png_path = ros::package::getPath("virtualgimbal_ros") + "/output/aruco_board.png";
+        cv::imwrite(output_png_path.c_str(),aruco_board);
+    }
+
+    ros::Rate rate(120);
     while (ros::ok())
     {
         ros::spinOnce();
