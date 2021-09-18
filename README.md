@@ -49,7 +49,7 @@ Input imageが安定化前の動画で、Stabilized Imageが安定化後の動�
 ![Stabilized Image ](https://github.com/yossato/images/blob/master/Screenshot%20from%202020-02-29%2023-10-10.png?raw=true)  
   
 ## 2.2 Line Delay Estimation Tutorial  
-サンプル動画でLine delayの推定を体験してみます。[RealSense D435iで撮影したキャリブレーション用のrosbag](https://www.dropbox.com/s/8poxue1coy89fde/aruco_board_d435i.bag?dl=1)をダウンロードします。
+サンプル動画でLine delayの推定を体験してみます。[RealSense D435iで撮影したキャリブレーション用のrosbag](https://www.dropbox.com/s/e4onsul90wjbsad/aruco_board_d435i.bag?dl=1)をダウンロードします。
 以下のコマンドを別々のターミナルで実行してください。
 ```
 $ roslaunch virtualgimbal_ros estimate_line_delay_d435i.launch  
