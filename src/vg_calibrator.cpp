@@ -73,7 +73,7 @@ calibrator::calibrator() : pnh_("~"), image_transport_(nh_), q(1.0, 0, 0, 0), q_
  last_vector(0, 0, 0), param(pnh_),
  zoom_(1.3f),cutoff_frequency_(0.5),enable_trimming_(true),
  offset_time_(ros::Duration(0.0)), verbose(false), allow_blue_space(false), lms_period_(1.5), lms_order_(1),
- arr_(pnh_),min_angle_thres_(0.05), maximum_relative_delay_ransac_(0.01), maximum_iteration_ransac_(10000), minimum_number_of_data_ransac_(10000), generate_aruco_board_(false)
+ arr_(pnh_),min_angle_thres_(0.05), maximum_relative_delay_ransac_(0.01), maximum_iteration_ransac_(10000), minimum_number_of_data_ransac_(10000), generate_aruco_board_(false), show_gui_(true)
 {
     std::string image = "/image_rect";
     std::string imu_data = "/imu_data";
@@ -108,6 +108,7 @@ calibrator::calibrator() : pnh_("~"), image_transport_(nh_), q(1.0, 0, 0, 0), q_
     pnh_.param("minimum_number_of_data_ransac",minimum_number_of_data_ransac_,minimum_number_of_data_ransac_);
 
     pnh_.param("generate_aruco_board",generate_aruco_board_,generate_aruco_board_);
+    pnh_.param("show_gui",show_gui_,show_gui_);
 
     initializeDetection();
 
@@ -321,13 +322,19 @@ void calibrator::callback(const sensor_msgs::ImageConstPtr &image, const sensor_
 
         int markers_of_board_detected = estimatePoseBoard(cam_matrix,dist_coeffs,rvec,tvec);
 
-        cv::Mat result_board_image = drawResults(cv_ptr->image,markers_of_board_detected,cam_matrix,dist_coeffs,rvec,tvec);
+        // Debug 
+        // cv::Mat result_board_image = drawResults(cv_ptr->image,markers_of_board_detected,cam_matrix,dist_coeffs,rvec,tvec);
         // cv::imshow("Board",result_board_image);
 
         std::vector<cv::Vec3d> rvecs, tvecs;
         estimatePoseSingleMarkersWithInitPose(cam_matrix,dist_coeffs,rvecs,tvecs,rvec,tvec);
-        cv::Mat result_single_markers_image = drawSingleMarkersResults(cv_ptr->image,cam_matrix,dist_coeffs,rvecs,tvecs);
-        // cv::imshow("Single markers",result_single_markers_image);
+
+        cv::Mat result_single_markers_image;
+        if(show_gui_)
+        {
+            result_single_markers_image = drawSingleMarkersResults(cv_ptr->image,cam_matrix,dist_coeffs,rvecs,tvecs);
+            // cv::imshow("Single markers",result_single_markers_image);
+        }
 
         static cv::Vec3d old_rvec = rvec;
         std::vector<double> relative_z_axis_angles = estimateRelativeZAxisAngles(old_rvec,rvec,rvecs);
@@ -352,15 +359,20 @@ void calibrator::callback(const sensor_msgs::ImageConstPtr &image, const sensor_
         bool angle_diff_is_large = std::fabs(getDiffAngleVector(old_rvec, rvec).z()) > min_angle_thres_;
         if(angle_diff_is_large)
         {
-            result_phases = drawPhase(result_single_markers_image,relative_z_axis_angles);
+            if(show_gui_)
+            {
+                result_phases = drawPhase(result_single_markers_image,relative_z_axis_angles);
+            }
+            
             linear_equation_coeffs = calculateLinearEquationCoefficients(dt.toSec(),relative_z_axis_angles);
-            // std::cout << "LEC:" << linear_equation_coeffs << std::endl;
             drawPhaseLSM(dt.toSec(),linear_equation_coeffs,result_phases);
         }
         else
         {
-            result_phases = drawPhase(result_single_markers_image,relative_z_axis_angles,cv::Scalar(127,127,127));
-            // result_phases = result_single_markers_image.clone();
+            if(show_gui_)
+            {
+                result_phases = drawPhase(result_single_markers_image,relative_z_axis_angles,cv::Scalar(127,127,127));
+            }
         }
         old_rvec = rvec;
 
@@ -391,7 +403,7 @@ void calibrator::callback(const sensor_msgs::ImageConstPtr &image, const sensor_
         //     drawPhaseLSM(dt.toSec(),coeff_to_show,result_phases,cv::Scalar(255,255,0));
         // }
 
-        if(!result_phases.empty())
+        if(!result_phases.empty() && show_gui_)
         {
             cv::imshow("phase",result_phases);
         }     
@@ -703,7 +715,10 @@ void calibrator::run()
     while (ros::ok())
     {
         ros::spinOnce();
-        cv::imshow("aruco_board",aruco_board);
+        if(show_gui_)
+        {
+            cv::imshow("aruco_board",aruco_board);
+        }
         char key = (char)cv::waitKey(1);
         if(key == 'q')
         {

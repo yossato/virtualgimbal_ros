@@ -145,6 +145,7 @@ private:
     std::vector<double> vec_delay_,vec_v_;
     int minimum_number_of_data_ransac_;
     bool generate_aruco_board_;
+    bool show_gui_;
 };
 
 }
