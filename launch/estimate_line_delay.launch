@@ -1,35 +1,23 @@
 <?xml version="1.0"?>
 <launch>
     <arg name="image"           default="/image_rect"/>
-    <arg name="imu_data"        default="/imu_data"/>
-    <arg name="zoom_factor"     default="1.3"/>
-    <arg name="enable_trimming" default="true"/>
-    <arg name="line_delay"      default="0.0"/>
-    <arg name="offset_time"     default="0.0"/>
-    <arg name="lsm_order"       default="1"/>
-    <arg name="lsm_period"      default="1.5"/>
-    <arg name="verbose"         default="false"/> <!-- For Debug -->
-    <arg name="allow_blue_space" default="false"/>
+    <arg name="minimum_angle_thresh"            default="0.05"/>
+    <arg name="maximum_angle_distance_ransac"   default="0.01"/>
+    <arg name="maximum_iteration_ransac"        default="10000"/>
+    <arg name="minimum_number_of_data_ransac"   default="10000"/>
+    <arg name="generate_aruco_board"            default="false"/>
+    <arg name="show_gui"                        default="true"/>
 
     <node name="virtualgimbal_ros" pkg="virtualgimbal_ros" type="line_delay_estimator_node" output="screen">
         <rosparam command="load"    file="$(find virtualgimbal_ros)/params/detector_params.yaml"/>
         <rosparam command="load"    file="$(find virtualgimbal_ros)/params/marker_params.yaml"/>
         <rosparam command="load"    file="$(find virtualgimbal_ros)/params/line_delay_estimation_params.yaml"/>
-        <param name="image"             value="$(arg image)"/>
-        <param name="imu_data"          value="$(arg imu_data)"/>
-        <param name="zoom_factor"       value="$(arg zoom_factor)"/>
-        <param name="enable_trimming"   value="$(arg enable_trimming)"/>
-        <param name="line_delay"        value="$(arg line_delay)"/>
-        <param name="offset_time"       value="$(arg offset_time)"/>
-        <param name="lsm_order"         value="$(arg lsm_order)"/>
-        <param name="lsm_period"        value="$(arg lsm_period)"/>
-        <param name="verbose"           value="$(arg verbose)"/>
-        <param name="allow_blue_space"  value="$(arg allow_blue_space)"/>
+        <param name="image"                         value="$(arg image)"/>
+        <param name="minimum_angle_thresh"          value="$(arg minimum_angle_thresh)"/>
+        <param name="maximum_angle_distance_ransac" value="$(arg maximum_angle_distance_ransac)"/>
+        <param name="maximum_iteration_ransac"      value="$(arg maximum_iteration_ransac)"/>
+        <param name="minimum_number_of_data_ransac" value="$(arg minimum_number_of_data_ransac)"/>
+        <param name="generate_aruco_board"          value="$(arg generate_aruco_board)"/>
+        <param name="show_gui"                      value="$(arg show_gui)"/>    
     </node>
-
-    <include file="$(find realsense2_camera)/launch/rs_camera.launch">
-        <arg name="unite_imu_method"    value="linear_interpolation"/>
-        <arg name="enable_gyro"         value="true"/>
-        <arg name="enable_accel"        value="true"/>
-    </include>
 </launch>
