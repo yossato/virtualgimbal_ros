@@ -69,37 +69,12 @@ namespace virtualgimbal
 
 
 
-calibrator::calibrator() : pnh_("~"), image_transport_(nh_), q(1.0, 0, 0, 0), q_filtered(1.0, 0, 0, 0),
- last_vector(0, 0, 0), param(pnh_),
- zoom_(1.3f),cutoff_frequency_(0.5),enable_trimming_(true),
- offset_time_(ros::Duration(0.0)), verbose(false), allow_blue_space(false), lms_period_(1.5), lms_order_(1),
+calibrator::calibrator() : pnh_("~"), image_transport_(nh_), 
+ param(pnh_),
  arr_(pnh_),min_angle_thres_(0.05), maximum_relative_delay_ransac_(0.01), maximum_iteration_ransac_(10000), minimum_number_of_data_ransac_(10000), generate_aruco_board_(false), show_gui_(true)
 {
     std::string image = "/image_rect";
-    std::string imu_data = "/imu_data";
     pnh_.param("image", image, image);
-    pnh_.param("imu_data", imu_data, imu_data);
-    ROS_INFO("image topic is %s", image.c_str());
-    ROS_INFO("imu_data topic is %s", imu_data.c_str());
-
-    pnh_.param("zoom_factor",zoom_,zoom_);
-    if(zoom_ < 1.0)
-    {
-        ROS_ERROR("zoom_factor must be larger than 1.0.");
-        throw;
-    }
-    pnh_.param("cutoff_frequency",cutoff_frequency_,cutoff_frequency_);
-    pnh_.param("enable_trimming",enable_trimming_,enable_trimming_);
-    
-    double offset_time_double = offset_time_.toSec();
-    pnh_.param("offset_time",offset_time_double,offset_time_double);
-    offset_time_ = ros::Duration(offset_time_double);
-
-    pnh_.param("verbose",verbose,verbose);
-    pnh_.param("allow_blue_space",allow_blue_space,allow_blue_space);
-
-    pnh_.param("lsm_period",lms_period_,lms_period_);
-    pnh_.param("lsm_order",lms_order_,lms_order_);
 
     pnh_.param("minimum_angle_thresh",min_angle_thres_,min_angle_thres_);
 
@@ -113,86 +88,11 @@ calibrator::calibrator() : pnh_("~"), image_transport_(nh_), q(1.0, 0, 0, 0), q_
     initializeDetection();
 
     camera_subscriber_ = image_transport_.subscribeCamera(image, 100, &calibrator::callback, this);
-    imu_subscriber_ = pnh_.subscribe(imu_data, 10000, &calibrator::imuCallback, this);
-
-    camera_publisher_ = image_transport_.advertiseCamera("stabilized/image_rect",1);
-
-    if(verbose)
-    {
-        raw_quaternion_queue_size_pub = pnh_.advertise<std_msgs::Float64>("raw_quaternion_queue_size", 10);
-        filtered_quaternion_queue_size_pub = pnh_.advertise<std_msgs::Float64>("filtered_quaternion_queue_size", 10);
-    }
-
-    raw_angle_quaternion = Rotation(verbose);
-
-    // OpenCL
-    // initializeCL(context);
 }
 
 calibrator::~calibrator()
 {
     cv::destroyAllWindows();
-}
-
-MatrixPtr calibrator::getR(ros::Time time, double ratio){
-    Eigen::Quaterniond raw, filtered;
-    MatrixPtr R(new std::vector<float>(camera_info_->height_ * 9));
-    
-    assert(ratio >= 0.0);
-    assert((ratio - 1.0) < std::numeric_limits<double>::epsilon());
-
-    filtered = filtered_angle_quaternion.get_interpolate(time);
-
-    for (int row = 0, e = camera_info_->height_; row < e; ++row)
-    {
-        raw = raw_angle_quaternion.get_interpolate(time + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)));
-
-        Eigen::Quaterniond q = filtered.conjugate() * raw;
-        Eigen::Vector3d vec = Quaternion2Vector(q) * ratio;
-        Eigen::Quaterniond q2 = Vector2Quaternion<double>(vec );
-
-        q2 = raw.conjugate() * q2 * raw;
-
-        Eigen::Map<Eigen::Matrix<float, 3, 3, Eigen::RowMajor>>(&(*R)[row * 9], 3, 3) =
-            q2.matrix().cast<float>();
-    }
-    return R;
-}
-
-MatrixPtr calibrator::getR_LMS(ros::Time time, const ros::Time begin, const ros::Time end, int order, double ratio)
-{
-    Eigen::Quaterniond raw, filtered;
-    MatrixPtr R(new std::vector<float>(camera_info_->height_ * 9));
-    
-    assert(ratio >= 0.0);
-    assert((ratio - 1.0) < std::numeric_limits<double>::epsilon());
-
-
-    Eigen::Quaterniond correction_quaternion = raw_angle_quaternion.get_correction_quaternion_using_least_squares_method(begin,end,time,order);
-    
-
-    if(0)
-    {
-        printf("rw,rx,ry,rz,cw,cx,cy,cz\r\n");
-        raw = raw_angle_quaternion.get_interpolate(time);
-        printf("%f,%f,%f,%f,%f,%f,%f,%f\r\n",raw.w(),raw.x(),raw.y(),raw.z(),
-        correction_quaternion.w(),correction_quaternion.x(),correction_quaternion.y(),correction_quaternion.z());
-    }
-
-    for (int row = 0, e = camera_info_->height_; row < e; ++row)
-    {
-        raw = raw_angle_quaternion.get_interpolate(time + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)));
-
-        Eigen::Quaterniond q = correction_quaternion.conjugate() * raw;
-        Eigen::Vector3d vec = Quaternion2Vector(q) * ratio;
-        Eigen::Quaterniond q2 = Vector2Quaternion<double>(vec).normalized();
-
-        q2 = (raw.conjugate() * q2 * raw).normalized();
-
-        Eigen::Map<Eigen::Matrix<float, 3, 3, Eigen::RowMajor>>(&(*R)[row * 9], 3, 3) =
-            q2.matrix().cast<float>();
-    }
-    return R;
 }
 
 void calibrator::initializeDetection()
@@ -263,7 +163,6 @@ cv::Mat calibrator::drawSingleMarkersResults(const cv::Mat &image, const cv::Mat
     }
         
     return image_copy;
-    // cv::imshow("out", imageCopy);
 }
 
 cv::Mat calibrator::drawResults(const cv::Mat &image, const int markers_of_board_detected,const cv::Mat &cam_matrix, const cv::Mat &dist_coeffs, cv::Vec3d &rvec, cv::Vec3d &tvec)
@@ -287,7 +186,6 @@ cv::Mat calibrator::drawResults(const cv::Mat &image, const int markers_of_board
         cv::aruco::drawAxis(image_copy, cam_matrix, dist_coeffs, rvec, tvec, axisLength);
     }
     return image_copy;
-    // cv::imshow("out", imageCopy);
 }
 
 void calibrator::callback(const sensor_msgs::ImageConstPtr &image, const sensor_msgs::CameraInfoConstPtr &ros_camera_info)
@@ -316,8 +214,6 @@ void calibrator::callback(const sensor_msgs::ImageConstPtr &image, const sensor_
             memcpy(dist_coeffs.data,ros_camera_info->D.data(),ros_camera_info->D.size()*sizeof(double));
         }
 
-        // std::cout << "cam_matrix:\r\n" << cam_matrix << std::endl;
-
         detectMarkers(cv_ptr->image,cam_matrix,dist_coeffs);
 
         int markers_of_board_detected = estimatePoseBoard(cam_matrix,dist_coeffs,rvec,tvec);
@@ -333,7 +229,6 @@ void calibrator::callback(const sensor_msgs::ImageConstPtr &image, const sensor_
         if(show_gui_)
         {
             result_single_markers_image = drawSingleMarkersResults(cv_ptr->image,cam_matrix,dist_coeffs,rvecs,tvecs);
-            // cv::imshow("Single markers",result_single_markers_image);
         }
 
         static cv::Vec3d old_rvec = rvec;
@@ -376,12 +271,8 @@ void calibrator::callback(const sensor_msgs::ImageConstPtr &image, const sensor_
         }
         old_rvec = rvec;
 
-        // size_t minimum_number_of_data_ransac_ = 5000;
-        // static std::vector<double> vec_delay_,vec_v_;
-        
         if(angle_diff_is_large)
         {
-            // std::copy(relative_z_axis_angles.begin(),relative_z_axis_angles.end(),std::back_inserter(line_delay_buff));
             for(const auto &el:relative_z_axis_angles)
             {
                 vec_delay_.push_back(el * dt.toSec()); // Convert a unit from relative angle to second.
@@ -394,15 +285,6 @@ void calibrator::callback(const sensor_msgs::ImageConstPtr &image, const sensor_
         
         ROS_INFO_THROTTLE(5, "Capturing delay data: %lu / %d", vec_delay_.size(),minimum_number_of_data_ransac_);
 
-        // if((int)vec_delay_.size() >= minimum_number_of_data_ransac_)
-        // {
-        //     Eigen::VectorXd linear_equation_coeffs = calculateLinearEquationCoefficientsRansac(vec_v_,vec_delay_);
-        //     Eigen::VectorXd coeff_to_show;
-        //     coeff_to_show = linear_equation_coeffs;
-        //     coeff_to_show = coeff_to_show * 1./dt.toSec(); // Scaling to shows
-        //     drawPhaseLSM(dt.toSec(),coeff_to_show,result_phases,cv::Scalar(255,255,0));
-        // }
-
         if(!result_phases.empty() && show_gui_)
         {
             cv::imshow("phase",result_phases);
@@ -410,53 +292,6 @@ void calibrator::callback(const sensor_msgs::ImageConstPtr &image, const sensor_
 
     }
 
-}
-
-void calibrator::imuCallback(const sensor_msgs::Imu::ConstPtr &msg)
-{
-    // if (!std::isfinite(msg->angular_velocity.x + msg->angular_velocity.y + msg->angular_velocity.z + msg->header.stamp.toSec()))
-    // {
-    //     ROS_WARN("Input angular velocity and time stamp contains NaN. Skipped.");
-    //     return;
-    // }
-    // Eigen::Quaterniond w_g(0.0, msg->angular_velocity.x, msg->angular_velocity.y, msg->angular_velocity.z);
-
-    // if (imu_previous)
-    // { // Previous data is exist.
-    //     ros::Duration diff = (msg->header.stamp - imu_previous->header.stamp);
-    //     if (diff.toSec() < 0)
-    //     {
-    //         ROS_INFO("Jump");
-    //         imu_previous = nullptr;
-    //         raw_angle_quaternion.clear();
-    //         filtered_angle_quaternion.clear();
-    //         return;
-    //     }
-
-    //     Eigen::Quaterniond w_o = q * w_g * q.conjugate();
-    //     Eigen::Vector3d dq = Eigen::Vector3d(w_o.x(),w_o.y(),w_o.z()) * diff.toSec();
-
-        
-    //     q = q * Vector2Quaternion<double>(dq);
-    //     q.normalize();
-    //     // Bilinear transform, prewarping
-    //     float w_c = 2*CV_PI*cutoff_frequency_;
-    //     float T = diff.toSec();
-    //     float w_a = tan(w_c*T/2.f);
-    //     float a1 = (1.f - w_a) / (1.f + w_a); 
-
-
-    //     Eigen::Vector3d vec = a1 * Quaternion2Vector<double>((q_filtered * q.conjugate()).normalized(), last_vector);
-    //     q_filtered =  Vector2Quaternion<double>(vec) * q;
-    //     q_filtered.normalize();
-
-    //     last_vector = vec;
-
-    //     raw_angle_quaternion.push_back(msg->header.stamp, q);
-    //     filtered_angle_quaternion.push_back(msg->header.stamp, q_filtered);
-
-    // }
-    // imu_previous = msg;
 }
 
 cv::Mat createMarkersImage()
@@ -490,14 +325,6 @@ cv::Mat createMarkersImage()
 cv::Mat calibrator::createMarkersImage2(const ArucoRos &ar)
 {
     bool show_image = true;
-    // int markersX = 6;
-    // int markersY = 4;
-    // int markerSeparation = 150;
-    // int markerLength = 100;
-    // int dictionaryId = cv::aruco::DICT_6X6_250;
-    // int margins = markerSeparation;
-    // int borderBits = 1;
-
 
     cv::Size image_size;
     image_size.width = ar.markers_X_ * (ar.marker_length_ + ar.marker_separation_) - ar.marker_separation_ + 2 * ar.marker_separation_;
@@ -536,16 +363,6 @@ Eigen::Vector3d calibrator::getDiffAngleVector(cv::Vec3d &old_rvec, cv::Vec3d &c
 
 std::vector<double> calibrator::estimateRelativeZAxisAngles(cv::Vec3d &old_rvec, cv::Vec3d &current_rvec, std::vector<cv::Vec3d> &rvecs)
 {
-    // Eigen::Vector3d old_eigen_vec,current_eigen_vec;
-
-    // cv::cv2eigen(old_rvec,old_eigen_vec);
-    // Eigen::Quaterniond old_q = Vector2Quaternion<double>(old_eigen_vec);
-
-    // cv::cv2eigen(current_rvec,current_eigen_vec);
-    // Eigen::Quaterniond current_q = Vector2Quaternion<double>(current_eigen_vec);
-    
-    // Eigen::Quaterniond diff_old_new_q = old_q * current_q.conjugate();
-    // Eigen::Vector3d diff_old_new_vec = Quaternion2Vector(diff_old_new_q);
     Eigen::Vector3d diff_old_new_vec = getDiffAngleVector(old_rvec, current_rvec);
 
     Eigen::Vector3d current_eigen_vec;
@@ -556,7 +373,6 @@ std::vector<double> calibrator::estimateRelativeZAxisAngles(cv::Vec3d &old_rvec,
     int i=0;
     for(auto &r:rvecs)
     {
-        // std::cout << i++ << ":" << r[2] << std::endl;
         Eigen::Vector3d r_eigen_vec;
         cv::cv2eigen(r,r_eigen_vec);
         Eigen::Quaterniond q = Vector2Quaternion<double>(r_eigen_vec);
@@ -564,7 +380,6 @@ std::vector<double> calibrator::estimateRelativeZAxisAngles(cv::Vec3d &old_rvec,
         Eigen::Quaterniond diff_q = q * current_q.conjugate();
         Eigen::Vector3d diff_vec = Quaternion2Vector(diff_q);
         relative_z_axis_angles.push_back(diff_vec.z()/diff_old_new_vec.z());
-        // relative_z_axis_angles.push_back(diff_vec.z());
     }
     return relative_z_axis_angles;
 }
@@ -608,23 +423,13 @@ Eigen::VectorXd calibrator::calculateLinearEquationCoefficients(double dt, std::
         y[i] = relative_z_axis_angles[i];
     }
     Eigen::VectorXd coeffs = least_squares_method(x,y,1);
-    // ROS_INFO("dt: %f LSM: %f %f",dt, coeffs[0],coeffs[1]);
     return coeffs;
 }
 
 Eigen::VectorXd calibrator::calculateLinearEquationCoefficientsRansac(std::vector<double> x, std::vector<double> y)
 {
-    // double maximum_angle_distance_ransac_ = 0.5;
-    // int maximum_iteration_ransac_ = 1000;
     int maximum_inlier = 0;
     double a_best,b_best;
-
-    // Eigen::MatrixXd pm(vec_v.size(),2);
-    // Eigen::MatrixXd mat_vec_v = Eigen::Map<Eigen::MatrixXd>(vec_v.data(),1,vec_v.size());
-    // Eigen::MatrixXd rz = Eigen::Map<Eigen::MatrixXd>(relative_z_axis_angles.data(),1,relative_z_axis_angles.size());
-    // pm.block(0,0,pm.rows(),1) = mat_vec_v;
-    // pm.block(0,1,pm.rows(),1) = rz;
-    // std::cout << "pm:\r\n" << pm << std::endl;
 
     std::random_device seed_gen;
     std::mt19937 engine(seed_gen());
@@ -664,10 +469,6 @@ Eigen::VectorXd calibrator::calculateLinearEquationCoefficientsRansac(std::vecto
         return retval;
     }
 
-    // std::cout << "inlier:\r\n" << maximum_inlier << "/" << relative_z_axis_angles.size() << std::endl;
-    // std::cout << "a_best:\r\n" << a_best << std::endl;
-    // std::cout << "b_best:\r\n" << b_best << std::endl;
-    
 
     // Extract inlers
     Eigen::VectorXd x_in(maximum_inlier),y_in(maximum_inlier);
@@ -683,7 +484,7 @@ Eigen::VectorXd calibrator::calculateLinearEquationCoefficientsRansac(std::vecto
         } 
     }
 
-    // Get best coeffs
+    // Get the best coeffs
     Eigen::VectorXd coeffs =  least_squares_method(x_in,y_in,1);
     ROS_INFO("Inlier:%d / %lu Line_delay:%.8f [second]",maximum_inlier,y.size(),-coeffs[1]);
     return coeffs;
@@ -692,7 +493,6 @@ Eigen::VectorXd calibrator::calculateLinearEquationCoefficientsRansac(std::vecto
 Eigen::VectorXd calibrator::drawPhaseLSM(double dt, Eigen::VectorXd coeffs, cv::Mat &image, cv::Scalar color)
 {
     int width = image.cols * 0.1;
-    //  = calculateLinearEquationCoefficients(dt, relative_z_axis_angles);
 
     cv::line(image, cv::Point(image.cols/2 + width * (coeffs[1]*0                + coeffs[0]),     0), 
                     cv::Point(image.cols/2 + width * (coeffs[1]*(image.rows-1)   + coeffs[0]),  (image.rows-1)),
@@ -728,21 +528,11 @@ void calibrator::run()
         if((int)vec_delay_.size() >= minimum_number_of_data_ransac_)
         {
             Eigen::VectorXd linear_equation_coeffs = calculateLinearEquationCoefficientsRansac(vec_v_,vec_delay_);
-            // Eigen::VectorXd coeff_to_show;
-            // coeff_to_show = linear_equation_coeffs;
-            // coeff_to_show = coeff_to_show * 1./dt.toSec(); // Scaling to shows
-            // drawPhaseLSM(dt.toSec(),coeff_to_show,result_phases,cv::Scalar(255,255,0));
             camera_subscriber_.shutdown();
-            imu_subscriber_.shutdown();
             ros::shutdown();
             ros::spinOnce();
         }
-
         rate.sleep();
-
-    
-
-
     }
 }
 

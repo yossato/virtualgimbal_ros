@@ -88,50 +88,10 @@ private:
     ros::NodeHandle pnh_;
     image_transport::ImageTransport image_transport_;
     image_transport::CameraSubscriber camera_subscriber_;
-    image_transport::CameraPublisher camera_publisher_;
-    ros::Subscriber imu_subscriber_;
-    Eigen::Quaterniond q,q_filtered;
-    sensor_msgs::Imu::ConstPtr imu_previous = nullptr;
-    sensor_msgs::ImageConstPtr image_previous = nullptr;
-    ros::Publisher raw_quaternion_queue_size_pub,filtered_quaternion_queue_size_pub;  
-    Eigen::Vector3d last_vector;
-    MatrixPtr getR(ros::Time time, double ratio=1.0);
-    MatrixPtr getR_LMS(ros::Time time, const ros::Time begin, const ros::Time end, int order, double ratio=1.0);
-    ros::Time get_begin_time(ros::Time time);
-    ros::Time get_end_time(ros::Time time);
-
-
-
-    Rotation raw_angle_quaternion;
-    Rotation filtered_angle_quaternion;
-
-    Image src_image;
 
     Parameters param; 
-    CameraInformationPtr camera_info_;
-    CameraInformationPtr dst_camera_info_;
-    // sensor_msgs::CameraInfoConstPtr ros_camera_info_;
-
-    // Image processing parameters
-    float zoom_;
-    float cutoff_frequency_;
-    float a1_;
-    bool enable_trimming_;
-    ros::Duration offset_time_;
-
-    // Prepare OpenCL
-    cv::ocl::Context context;
-    cv::String build_opt;
-
-    // Debug
-    bool verbose;
-    bool allow_blue_space;
-
-    // LMS
-    double lms_period_;
-    int lms_order_;
-
     ArucoRos arr_;
+
     cv::Ptr<cv::aruco::Dictionary> dictionary_;
     cv::Ptr<cv::aruco::GridBoard> gridboard_;
     cv::Ptr<cv::aruco::Board> board_;
