@@ -84,7 +84,9 @@ float2 warp_undistort(
 }
 
 __kernel void stabilizer_function(
-   __read_only image2d_t input,
+   // __read_only image2d_t input,
+   __global uchar4 *input,
+   int input_step, int input_offset, int input_rows, int input_cols, 
    __global uchar4 *output,
    int output_step, int output_offset, int output_rows, int output_cols, 
    __constant float* rotation_matrix,        // Rotation Matrix in each rows.
@@ -94,7 +96,8 @@ __kernel void stabilizer_function(
    float fx_dst, float fy_dst, float cx_dst, float cy_dst
 )
 {
-   int2 size_src = get_image_dim(input);
+   // int2 size_src = get_image_dim(input);
+   int2 size_src = (int2)(input_cols,input_rows);
    int2 size_dst = (int2)(output_cols,output_rows);
 
    int2 uvi = (int2)(get_global_id(0),get_global_id(1));
@@ -145,7 +148,13 @@ __kernel void stabilizer_function(
          }else{
             continue;
          }
-         uint4 pixel = read_imageui(input, samplerLN, uw_cam);
+         // uint4 pixel = read_imageui(input, samplerLN, uw_cam);
+         int input_index = mad24(convert_int(uw_cam.y), input_cols, convert_int(uw_cam.x));
+         uchar4 pixel = (uchar4)(0,0,0,0);
+         if(all(convert_int2(uw_cam) >= 0) && all(convert_int2(uw_cam) < size_src))
+         {
+            pixel = *(__global uchar4 *)(input + input_index);
+         }
          
          int output_index = mad24(uvt.y, output_cols, uvt.x);
          __global uchar4 *p_out = (__global uchar4 *)(output + output_index);
