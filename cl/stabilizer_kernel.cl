@@ -155,16 +155,16 @@ __kernel void stabilizer_function(
          if(all(uw_cam >= 0.f) && all(uw_cam <= convert_float2(size_src-(int2)(1,1))))
          {
             uchar4 pixel_aa = *(__global uchar4 *)(input + input_index);
-            uchar4 pixel_ab = *(__global uchar4 *)(input + input_index + 1);
-            uchar4 pixel_ba = *(__global uchar4 *)(input + input_index + input_cols);
+            uchar4 pixel_ba = *(__global uchar4 *)(input + input_index + 1);
+            uchar4 pixel_ab = *(__global uchar4 *)(input + input_index + input_cols);
             uchar4 pixel_bb = *(__global uchar4 *)(input + input_index + input_cols + 1);
 
             // Bilinear interpolation
             float x_a = uw_cam.x - floor(uw_cam.x);
-            float x_b = 1- x_a;
+            float x_b = 1.f- x_a;
 
             float y_a = uw_cam.y - floor(uw_cam.y);
-            float y_b = 1- y_a;
+            float y_b = 1.f- y_a;
 
             pixel = convert_uchar4(x_b * y_b * convert_float4(pixel_aa) 
                                  + x_b * y_a * convert_float4(pixel_ab)
