@@ -188,9 +188,9 @@ double synchronization_manager::estimate_offset_time()
             
             
         }
-        
+        return min_offset_time.toSec();
     }
-    return min_offset_time.toSec();
+    
     
 }
 
