@@ -191,7 +191,7 @@ double synchronization_manager::estimate_offset_time()
         return min_offset_time.toSec();
     }
     
-    
+    return std::numeric_limits<double>::quiet_NaN();
 }
 
 } // namespace virtualgimbal

@@ -43,6 +43,7 @@
 #include <image_transport/image_transport.h>
 #include "angular_velocity_estimator.h"
 #include "rotation.h"
+#include <limits>
 namespace virtualgimbal
 {
 

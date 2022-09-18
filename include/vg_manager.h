@@ -56,7 +56,7 @@ namespace virtualgimbal
 using MatrixPtr = std::shared_ptr<std::vector<float>>;
 
 using Rotation = StampedDeque<Eigen::Quaterniond>;
-using Image = StampedDeque<cv::UMat>;
+using ImageDeque = StampedDeque<cv::UMat>;
 using UMatPtr = std::unique_ptr<cv::UMat>;
 
 class manager
@@ -89,7 +89,7 @@ private:
     Rotation raw_angle_quaternion;
     Rotation filtered_angle_quaternion;
 
-    Image src_image;
+    ImageDeque src_images;
 
     Parameters param; 
     CameraInformationPtr camera_info_;
