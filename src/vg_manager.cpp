@@ -167,7 +167,7 @@ void manager::callback(const sensor_msgs::ImageConstPtr &image, const sensor_msg
         if ((image->header.stamp - image_previous->header.stamp).toSec() < 0)
         {
             ROS_INFO("image time stamp jamp is detected.");
-            src_image.clear();
+            src_images.clear();
             image_previous = nullptr;
         }
     }
@@ -193,7 +193,7 @@ void manager::callback(const sensor_msgs::ImageConstPtr &image, const sensor_msg
     // TODO: check channel
 
     // Push back umat
-    src_image.push_back(image->header.stamp, umat_src);
+    src_images.push_back(image->header.stamp, umat_src);
 
     // TODO: Limit queue size
     image_previous = image;
@@ -310,14 +310,14 @@ void manager::run()
             
             // Time stamp of image. The image should be later than this time.
             auto time_image_request = time_gyro_front + offset_time_ + half_height_delay;
-            if(!src_image.is_available_after(time_image_request))
+            if(!src_images.is_available_after(time_image_request))
             {
                 continue;
             }
 
             // Get time stamp of center row of the image
             ros::Time time_image_center_line;
-            auto image = src_image.get(time_image_request,time_image_center_line);
+            auto image = src_images.get(time_image_request,time_image_center_line);
             
             
             // Check availability of gyro angle data at the time stamp of the last row of the image
@@ -420,7 +420,7 @@ void manager::run()
 
             raw_angle_quaternion.pop_old(time_gyro_first_line-ros::Duration(3.0));    // TODO:ジャイロと画像のオフセットを考慮
             filtered_angle_quaternion.pop_old(time_gyro_first_line-ros::Duration(3.0));
-            src_image.pop_old_close(time_image_center_line);
+            src_images.pop_old_close(time_image_center_line);
 
         }
         else
