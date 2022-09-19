@@ -66,6 +66,8 @@ manager::manager() : pnh_("~"), image_transport_(nh_), q(1.0, 0, 0, 0), q_filter
     pnh_.param("lsm_period",lms_period_,lms_period_);
     pnh_.param("lsm_order",lms_order_,lms_order_);
 
+    raw_angle_quaternion = Rotation(verbose);
+
     camera_subscriber_ = image_transport_.subscribeCamera(image, 100, &manager::callback, this);
     imu_subscriber_ = pnh_.subscribe(imu_data, 10000, &manager::imu_callback, this);
 
@@ -77,7 +79,6 @@ manager::manager() : pnh_("~"), image_transport_(nh_), q(1.0, 0, 0, 0), q_filter
         filtered_quaternion_queue_size_pub = pnh_.advertise<std_msgs::Float64>("filtered_quaternion_queue_size", 10);
     }
 
-    raw_angle_quaternion = Rotation(verbose);
 
     // OpenCL
     initializeCL(context);
@@ -99,8 +100,10 @@ MatrixPtr manager::getR(ros::Time time, double ratio){
 
     for (int row = 0, e = camera_info_->height_; row < e; ++row)
     {
-        raw = raw_angle_quaternion.get_interpolate(time + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)));
-
+        {
+            std::lock_guard<std::mutex> lock(mutex_imu_);
+            raw = raw_angle_quaternion.get_interpolate(time + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)));
+        }
         Eigen::Quaterniond q = filtered.conjugate() * raw;
         Eigen::Vector3d vec = Quaternion2Vector(q) * ratio;
         Eigen::Quaterniond q2 = Vector2Quaternion<double>(vec );
@@ -121,22 +124,30 @@ MatrixPtr manager::getR_LMS(ros::Time time, const ros::Time begin, const ros::Ti
     assert(ratio >= 0.0);
     assert((ratio - 1.0) < std::numeric_limits<double>::epsilon());
 
-
-    Eigen::Quaterniond correction_quaternion = raw_angle_quaternion.get_correction_quaternion_using_least_squares_method(begin,end,time,order);
-    
+    Eigen::Quaterniond correction_quaternion;
+    {
+        std::lock_guard<std::mutex> lock(mutex_imu_);
+        correction_quaternion = raw_angle_quaternion.get_correction_quaternion_using_least_squares_method(begin,end,time,order);
+    }
 
     if(0)
     {
         printf("rw,rx,ry,rz,cw,cx,cy,cz\r\n");
-        raw = raw_angle_quaternion.get_interpolate(time);
+        
+        {
+            std::lock_guard<std::mutex> lock(mutex_imu_);
+            raw = raw_angle_quaternion.get_interpolate(time);
+        }
         printf("%f,%f,%f,%f,%f,%f,%f,%f\r\n",raw.w(),raw.x(),raw.y(),raw.z(),
         correction_quaternion.w(),correction_quaternion.x(),correction_quaternion.y(),correction_quaternion.z());
     }
 
     for (int row = 0, e = camera_info_->height_; row < e; ++row)
     {
-        raw = raw_angle_quaternion.get_interpolate(time + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)));
-
+        {
+            std::lock_guard<std::mutex> lock(mutex_imu_);
+            raw = raw_angle_quaternion.get_interpolate(time + ros::Duration(camera_info_->line_delay_ * (row - camera_info_->height_ * 0.5)));
+        }
         Eigen::Quaterniond q = correction_quaternion.conjugate() * raw;
         Eigen::Vector3d vec = Quaternion2Vector(q) * ratio;
         Eigen::Quaterniond q2 = Vector2Quaternion<double>(vec).normalized();
@@ -167,7 +178,10 @@ void manager::callback(const sensor_msgs::ImageConstPtr &image, const sensor_msg
         if ((image->header.stamp - image_previous->header.stamp).toSec() < 0)
         {
             ROS_INFO("image time stamp jamp is detected.");
-            src_images.clear();
+            {
+                std::lock_guard<std::mutex> lock(mutex_image_);
+                src_images.clear();
+            }
             image_previous = nullptr;
         }
     }
@@ -193,8 +207,10 @@ void manager::callback(const sensor_msgs::ImageConstPtr &image, const sensor_msg
     // TODO: check channel
 
     // Push back umat
-    src_images.push_back(image->header.stamp, umat_src);
-
+    {
+        std::lock_guard<std::mutex> lock(mutex_image_);
+        src_images.push_back(image->header.stamp, umat_src);
+    }
     // TODO: Limit queue size
     image_previous = image;
 }
@@ -215,7 +231,10 @@ void manager::imu_callback(const sensor_msgs::Imu::ConstPtr &msg)
         {
             ROS_INFO("Jump");
             imu_previous = nullptr;
-            raw_angle_quaternion.clear();
+            {
+                std::lock_guard<std::mutex> lock(mutex_imu_);
+                raw_angle_quaternion.clear();
+            }
             filtered_angle_quaternion.clear();
             return;
         }
@@ -239,7 +258,10 @@ void manager::imu_callback(const sensor_msgs::Imu::ConstPtr &msg)
 
         last_vector = vec;
 
-        raw_angle_quaternion.push_back(msg->header.stamp, q);
+        {
+            std::lock_guard<std::mutex> lock(mutex_imu_);
+            raw_angle_quaternion.push_back(msg->header.stamp, q);
+        }
         filtered_angle_quaternion.push_back(msg->header.stamp, q_filtered);
 
     }
@@ -280,10 +302,12 @@ void manager::run()
     ROS_INFO("kernel path:%s",  kernel_path.c_str());
     const char *kernel_function = "stabilizer_function";
 
+    ros::AsyncSpinner spinner(1);  //spinを処理するスレッド数を引数に渡す
+    spinner.start();
+
     ros::Rate rate(120);
     while (ros::ok())
     {
-        ros::spinOnce();
         cv::waitKey(1);
         rate.sleep();
 
@@ -293,7 +317,10 @@ void manager::run()
         if (verbose)
         {
             std_msgs::Float64 msg;
-            msg.data = (double)raw_angle_quaternion.size();
+            {
+                std::lock_guard<std::mutex> lock(mutex_imu_);
+                msg.data = (double)raw_angle_quaternion.size();
+            }    
             raw_quaternion_queue_size_pub.publish(msg);
             std_msgs::Float64 msg2;
             msg2.data = (double)filtered_angle_quaternion.size();
@@ -301,31 +328,48 @@ void manager::run()
         }
 
         // Is gyro availavle?
-        if (raw_angle_quaternion.size())
+        size_t raw_angle_quaternion_size = 0;
+        {
+            std::lock_guard<std::mutex> lock(mutex_imu_);
+            raw_angle_quaternion_size = raw_angle_quaternion.size();
+        }
+
+        if (raw_angle_quaternion_size)
         {
             // Get first angle of gyro sensor
-            auto time_gyro_front = raw_angle_quaternion.front().first;
-            
+            ros::Time time_gyro_front;
+            {
+                std::lock_guard<std::mutex> lock(mutex_imu_);
+                time_gyro_front = raw_angle_quaternion.front().first;
+            }
             ros::Duration half_height_delay = ros::Duration(fabs(camera_info_->line_delay_) * camera_info_->height_ * 0.5);
             
             // Time stamp of image. The image should be later than this time.
             auto time_image_request = time_gyro_front + offset_time_ + half_height_delay;
-            if(!src_images.is_available_after(time_image_request))
             {
-                continue;
+                std::lock_guard<std::mutex> lock(mutex_image_);
+                if(!src_images.is_available_after(time_image_request))
+                {
+                    continue;
+                }
             }
 
             // Get time stamp of center row of the image
             ros::Time time_image_center_line;
-            auto image = src_images.get(time_image_request,time_image_center_line);
-            
+            cv::UMat image;
+            {
+                std::lock_guard<std::mutex> lock(mutex_image_);
+                image = src_images.get(time_image_request,time_image_center_line);
+            }
             
             // Check availability of gyro angle data at the time stamp of the last row of the image
             auto time_gyro_last_line = time_image_center_line + half_height_delay - offset_time_;
             auto time_gyro_center_line = time_image_center_line - offset_time_;
             auto time_gyro_first_line = time_image_center_line - half_height_delay - offset_time_;
-            if(!raw_angle_quaternion.is_available_after(time_gyro_last_line)) continue;
-
+            {
+                std::lock_guard<std::mutex> lock(mutex_imu_);
+                if(!raw_angle_quaternion.is_available_after(time_gyro_last_line)) continue;
+            }
             MatrixPtr R2 = getR_LMS(time_gyro_center_line,time_gyro_last_line-ros::Duration(lms_period_),time_gyro_last_line,lms_order_ );
             if(!allow_blue_space)
             {
@@ -418,9 +462,15 @@ void manager::run()
             }
             camera_publisher_.publish(*msg,info);
 
-            raw_angle_quaternion.pop_old(time_gyro_first_line-ros::Duration(3.0));    // TODO:ジャイロと画像のオフセットを考慮
-            filtered_angle_quaternion.pop_old(time_gyro_first_line-ros::Duration(3.0));
-            src_images.pop_old_close(time_image_center_line);
+            {
+                std::lock_guard<std::mutex> lock(mutex_imu_);
+                raw_angle_quaternion.pop_old(time_gyro_first_line-ros::Duration(3.0 + lms_period_));    // TODO:ジャイロと画像のオフセットを考慮
+            }
+            filtered_angle_quaternion.pop_old(time_gyro_first_line-ros::Duration(3.0 + lms_period_));
+            {
+                std::lock_guard<std::mutex> lock(mutex_image_);
+                src_images.pop_old(time_image_center_line);
+            }
 
         }
         else

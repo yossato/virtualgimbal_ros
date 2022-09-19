@@ -47,7 +47,7 @@
 #include "camera_information.h"
 #include "cl_manager.h"
 #include "SO3Filters.h"
-
+#include <mutex>
 
 
 namespace virtualgimbal
@@ -114,6 +114,9 @@ private:
     // LMS
     double lms_period_;
     int lms_order_;
+
+    std::mutex mutex_imu_;
+    std::mutex mutex_image_;
 };
 
 } // namespace virtualgimbal

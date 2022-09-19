@@ -85,8 +85,12 @@ public:
         {
             data.erase(data.begin(), it);
         }
+        else
+        {
+            data.pop_front();
+        }
 
-        };
+    };
 
     void pop_front()
     {
