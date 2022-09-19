@@ -418,9 +418,9 @@ void manager::run()
             }
             camera_publisher_.publish(*msg,info);
 
-            raw_angle_quaternion.pop_old(time_gyro_first_line-ros::Duration(3.0));    // TODO:ジャイロと画像のオフセットを考慮
-            filtered_angle_quaternion.pop_old(time_gyro_first_line-ros::Duration(3.0));
-            src_image.pop_old_close(time_image_center_line);
+            raw_angle_quaternion.pop_old(time_gyro_first_line-ros::Duration(3.0 + lms_period_));    // TODO:ジャイロと画像のオフセットを考慮
+            filtered_angle_quaternion.pop_old(time_gyro_first_line-ros::Duration(3.0 + lms_period_));
+            src_image.pop_old(time_image_center_line);
 
         }
         else
