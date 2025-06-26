@@ -3,6 +3,8 @@ VirtualGimbal ROSは、Inertial measurement Unit (IMU)で計測した角速度�
 VirtualGimbal ROSは、カメラ映像を通じたロボット操縦時の視認性向上、画像認識・物体追跡性能向上および映像撮影品質の向上を目的として開発されました。  
 VirtualGimbal ROSは、OpenCLによるGPU処理で高速に動作します。例えば、Intel RealSense D435iの1920x1080 pixel, 30 fpsの動画をノートPC(Core i7-8550U)でリアルタイムに安定化できることを確認しています。  
   
+**ROS2 Port**
+This repository was originally built for ROS1. A complete migration to ROS2 is ongoing. Build files and node implementations need updates to use rclcpp and ament.
 # 1. Overview  
 このパッケージは3種類のノードから構成されています。  
   
@@ -170,4 +172,8 @@ Line delay推定用のパラメータはparams/line_delay_estimation_params.yaml
     - RealSense D435iの画像ストリームからCMOSイメージセンサーのLine delayを推定します。  
 
 
+
+
+## Porting to ROS2
+Porting work requires converting catkin build files to ament and replacing ROS1 APIs with rclcpp equivalents. Begin by creating a new ament package and updating include directives.
 
